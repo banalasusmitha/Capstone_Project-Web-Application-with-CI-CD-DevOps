@@ -1,6 +1,11 @@
-
 pipeline {
     agent any
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION = 'ap-south-1'
+    }
 
     stages {
 
@@ -16,15 +21,12 @@ pipeline {
                 sh 'git --version'
                 sh 'docker --version'
                 sh 'aws --version'
-                sh 'kubectl version --client'
-                sh 'eksctl version'
             }
         }
 
-        stage('Pipeline Test') {
+        stage('AWS Authentication Test') {
             steps {
-                echo 'Jenkins is successfully connected to GitHub.'
-                echo 'DevOps environment is ready.'
+                sh 'aws sts get-caller-identity'
             }
         }
     }
@@ -35,9 +37,6 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed.'
-        }
-        always {
-            echo 'End of pipeline.'
         }
     }
 }
