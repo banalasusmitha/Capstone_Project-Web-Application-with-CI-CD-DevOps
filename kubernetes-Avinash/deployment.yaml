@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopnow-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopnow-backend
+  template:
+    metadata:
+      labels:
+        app: shopnow-backend
+    spec:
+      containers:
+      - name: shopnow-backend
+        image: 712934828955.dkr.ecr.ap-south-1.amazonaws.com/shopnow-backend:latest
+        ports:
+        - containerPort: 5000
