@@ -1,0 +1,26 @@
+# Default StorageClass for the ShopNow MongoDB StatefulSet.
+#
+# EKS ships no default StorageClass, so a PVC with no storageClassName stays
+# Pending forever. The EBS CSI driver is already installed by Terraform
+# (modules/eks) with an IRSA role, so this only needs applying once:
+#
+#   kubectl apply -f extras/storageclass-gp3.yaml
+#   kubectl get storageclass
+#
+# WaitForFirstConsumer matters: it delays creating the EBS volume until the
+# pod is scheduled, so the volume lands in the same AZ as the node. Binding
+# immediately across 2 AZs is the classic cause of a permanently Pending
+# MongoDB pod.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  encrypted: "true"

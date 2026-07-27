@@ -1,0 +1,25 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl.bak
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+tfplan
+*.tfplan
+
+# Never commit these - they usually contain secrets
+*.auto.tfvars
+secrets.tfvars
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
