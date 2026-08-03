@@ -22,12 +22,12 @@
                 sh 'aws --version'
             }
         }
-
+/*
         stage('AWS Authentication Test') {
             steps {
                 sh 'aws sts get-caller-identity'
             }
-        }
+        }*/
     }
 
     post {
