@@ -104,7 +104,10 @@ module "eks" {
   max_size       = var.max_size
 
   # Jenkins plus any teammate ARNs listed in terraform.tfvars get kubectl access.
-  cluster_admin_principal_arns = concat([module.iam.jenkins_role_arn], var.team_principal_arns)
+  cluster_admin_principals = merge(
+    { jenkins = module.iam.jenkins_role_arn },
+    { for arn in var.team_principal_arns : arn => arn }
+  )
 
   tags = local.tags
 }

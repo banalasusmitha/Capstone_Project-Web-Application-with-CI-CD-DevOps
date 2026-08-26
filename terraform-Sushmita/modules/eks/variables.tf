@@ -107,10 +107,10 @@ variable "enable_metrics_server" {
   default     = true
 }
 
-variable "cluster_admin_principal_arns" {
-  description = "IAM user/role ARNs granted cluster-admin via EKS Access Entries."
-  type        = list(string)
-  default     = []
+variable "cluster_admin_principals" {
+  description = "Map of static label => IAM principal ARN granted cluster-admin."
+  type        = map(string)
+  default     = {}
 }
 
 variable "tags" {
