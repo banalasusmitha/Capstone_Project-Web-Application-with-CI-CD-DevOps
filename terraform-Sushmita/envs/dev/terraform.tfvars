@@ -56,4 +56,4 @@ tf_state_bucket    = "shopnow-tfstate-095355901688"
 tf_lock_table_name = "shopnow-tf-locks"
 
 # Flip to true in Sprint 2 when the Jenkins job starts running terraform apply.
-allow_jenkins_to_run_terraform = false
+allow_jenkins_to_run_terraform = true
