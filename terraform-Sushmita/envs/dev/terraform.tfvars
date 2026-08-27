@@ -38,8 +38,8 @@ kubernetes_version = "1.33"
 # metrics-server is required by the HPA in Sprint 4.
 enable_metrics_server = true
 
-capacity_type  = "SPOT"
-instance_types = ["t3.medium", "t3a.medium"]
+capacity_type  = "ON_DEMAND"
+instance_types = ["t3.small"]
 desired_size   = 2
 min_size       = 2
 max_size       = 4
@@ -56,7 +56,7 @@ team_principal_arns = []
 # 968313778667 was read off the existing ECR image URLs. Confirm it matches
 # `aws sts get-caller-identity` and replace it if not - bootstrap prints the
 # correct bucket name for whichever account you are actually in.
-tf_state_bucket    = "shopnow-tfstate-968313778667"
+tf_state_bucket = "shopnow-tfstate-095355901688"
 tf_lock_table_name = "shopnow-tf-locks"
 
 # Flip to true in Sprint 2 when the Jenkins job starts running terraform apply.
