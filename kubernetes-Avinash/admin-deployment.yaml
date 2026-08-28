@@ -19,6 +19,6 @@ spec:
     spec:
       containers:
         - name: admin
-          image: 968313778667.dkr.ecr.ap-south-1.amazonaws.com/avinash-shopnow/admin:v1
+          image: 095355901688.dkr.ecr.ap-south-1.amazonaws.com/avinash-shopnow/admin:v1
           ports:
             - containerPort: 80

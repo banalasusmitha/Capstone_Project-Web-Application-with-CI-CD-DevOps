@@ -19,6 +19,6 @@ spec:
     spec:
       containers:
         - name: backend
-          image: 968313778667.dkr.ecr.ap-south-1.amazonaws.com/avinash-shopnow/backend:v1
+          image: 095355901688.dkr.ecr.ap-south-1.amazonaws.com/avinash-shopnow/backend:v1
           ports:
             - containerPort: 5000
