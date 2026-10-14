@@ -24,12 +24,13 @@ terraform-Sushmita/
 │   ├── vpc/              # VPC, subnets, IGW, NAT, route tables, SGs
 │   ├── ecr/              # One repo per service + lifecycle policies
 │   ├── iam/              # Jenkins role, instance profile, policies
-│   └── eks/              # Control plane, node group, OIDC, add-ons
+│   ├── eks/              # Control plane, node group, OIDC, add-ons
+│   └── ci-agent/         # Sprint 3: EC2 for Ansible to configure
 ├── envs/
 │   └── dev/              # The stack you actually apply
 ├── extras/               # gp3 StorageClass for the MongoDB PVC
 ├── TEAM-HANDOFF.md       # what each teammate needs from this layer
-└── docs/                 # File guide, walkthrough, checklist, cost notes, app integration
+└── docs/                 # Sprint guides, walkthroughs, viva study guide, cost notes
 ```
 
 Modules are reusable; `envs/dev` supplies the values. Adding a `stage` or
@@ -49,8 +50,19 @@ no module code changes.
 | Compute   | EKS control plane + managed node group (2x t3.medium Spot) |
 | Add-ons   | vpc-cni, kube-proxy, coredns, aws-ebs-csi-driver (IRSA), metrics-server |
 | Access    | EKS Access Entries for Jenkins and teammates |
+| CI agent  | (Sprint 3, opt-in) EC2 with key pair and the Jenkins instance profile — the host Ansible configures |
 | State     | S3 bucket (versioned, encrypted, lifecycle) + DynamoDB lock table |
 
+> **Sprint 3?** [`docs/sprint3-ci-agent.md`](docs/sprint3-ci-agent.md) — the
+> Terraform-provisioned EC2 that Ansible configures, step by step.
+>
+> **Revising for the viva?** Open [`docs/study-guide.html`](docs/study-guide.html)
+> in a browser — the architecture in one diagram, plus 30 practice questions.
+>
+> **Never used Terraform?** [`docs/terraform-from-zero.md`](docs/terraform-from-zero.md),
+> then [`docs/concepts-qa.md`](docs/concepts-qa.md) for the questions that
+> actually came up.
+>
 > **New to this code?** Start with
 > [`docs/tf-files-explained.md`](docs/tf-files-explained.md) - why the same
 > filenames appear in three folders and what each one holds. Then read

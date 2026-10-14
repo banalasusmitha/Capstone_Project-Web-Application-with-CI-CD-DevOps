@@ -57,3 +57,14 @@ tf_lock_table_name = "shopnow-tf-locks"
 
 # Flip to true in Sprint 2 when the Jenkins job starts running terraform apply.
 allow_jenkins_to_run_terraform = true
+
+# --- CI agent (Sprint 3) ----------------------------------------------------
+# An EC2 that Ansible configures (Docker, kubectl) and Jenkins builds
+# on. Before switching this on:
+#   1. ssh-keygen -t ed25519 -f ~/.ssh/shopnow-ci-agent -C "shopnow-ci-agent"
+#   2. cat ~/.ssh/shopnow-ci-agent.pub   -> paste the whole line below
+#   3. set create_ci_agent = true
+# The .pub file is NOT a secret. Never paste the file without .pub.
+create_ci_agent        = true
+ci_agent_public_key    = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6/RlP7Ef0nb63r85z0AgkS6GwiudbkDQRN0yU3EufU shopnow-ci-agent"
+ci_agent_instance_type = "c7i-flex.large"

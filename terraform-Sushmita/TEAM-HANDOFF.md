@@ -54,7 +54,13 @@ Tag images with `$BUILD_NUMBER`, not `v1` - Kubernetes won't roll out an unchang
 
 Frontend and admin builds **must** pass `--build-arg USER_NAME=avinash`.
 
-When your job starts running Terraform (Sprint 2), ask Susmitha to set `allow_jenkins_to_run_terraform = true` and re-apply.
+`allow_jenkins_to_run_terraform = true` is set — it takes effect at the next `terraform apply`.
+
+**Sprint 3 chain:** Terraform job, then Ansible job against the CI agent
+(`ci_agent_public_ip`). Store the agent's private key as a Jenkins credential
+("SSH Username with private key", user `ec2-user`). The agent carries the
+Jenkins IAM role, so builds on it need no AWS keys. Your Jenkins server's
+public IP must be in `admin_cidrs` for SSH to reach it.
 
 ---
 
@@ -91,8 +97,30 @@ Detail: `docs/app-integration.md`
 
 ## Ravi - Ansible and monitoring
 
+**Sprint 3: your Ansible target is the CI agent** — an EC2 that Terraform builds
+for exactly this. Turned on with `create_ci_agent = true`.
+
 | Output | For |
 |--------|-----|
+| `ci_agent_public_ip` | the host your playbook connects to |
+| `ansible_inventory` | a ready-made static inventory line |
+| `private_subnet_ids` | where the EKS nodes run |
+
+- Login user `ec2-user`. Python 3 and AWS CLI v2 come with Amazon Linux 2023;
+  **Docker and kubectl are for your playbook.**
+- Dynamic inventory: the `aws_ec2` plugin can group on tag `Role=ci_agent`.
+- SSH needs your IP in `admin_cidrs` — send it to Susmitha (`curl ifconfig.me`).
+  The private key comes from her privately, never via git or the group chat.
+
+**Don't aim Ansible at the EKS worker nodes.** The EKS-optimised AMI already
+configures Docker, kubelet and the CNI; reconfiguring them fights with EKS.
+
+**Monitoring (Sprint 5):** metrics-server is installed, so `kubectl top` works
+now — but it keeps no history and isn't a Prometheus substitute.
+`kube-prometheus-stack` gives you Prometheus, Grafana and Alertmanager in one
+Helm install.
+
+--------|-----|
 | `private_subnet_ids` | where nodes run |
 | `node_group_name` | the managed node group |
 

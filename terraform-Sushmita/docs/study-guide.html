@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShopNow infrastructure — study guide</title>
+<style>
+  :root{
+    --paper:#F4F6FB;
+    --card:#FFFFFF;
+    --ink:#161A24;
+    --ink-2:#4A5468;
+    --line:#DCE1EC;
+    --tf:#7B42BC;
+    --net:#0E7C86;
+    --reg:#B76E00;
+    --sec:#C2405A;
+    --add:#2E7D4F;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:0 20px 100px}
+
+  /* ---- hero ---- */
+  header{padding:64px 0 40px;border-bottom:1px solid var(--line);margin-bottom:48px}
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--tf);margin:0 0 18px;
+  }
+  h1{
+    font-family:var(--mono);font-weight:600;font-size:clamp(28px,5vw,42px);
+    line-height:1.15;letter-spacing:-.02em;margin:0 0 18px;
+  }
+  h1 em{font-style:normal;color:var(--tf)}
+  .lede{font-size:18px;color:var(--ink-2);max-width:62ch;margin:0}
+
+  /* ---- sections ---- */
+  section{margin:0 0 56px;scroll-margin-top:20px}
+  h2{
+    font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-2);margin:0 0 20px;padding-bottom:10px;border-bottom:1px solid var(--line);
+    font-weight:600;
+  }
+  h3{font-family:var(--mono);font-size:17px;margin:0 0 6px;font-weight:600}
+  p{margin:0 0 14px}
+  .muted{color:var(--ink-2)}
+
+  /* ---- diagram ---- */
+  figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px}
+  figcaption{font-size:14px;color:var(--ink-2);margin-top:14px}
+  svg{display:block;width:100%;height:auto}
+
+  /* ---- piece cards ---- */
+  .pieces{display:grid;gap:14px}
+  .piece{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:18px 20px;border-left:3px solid var(--tf);
+  }
+  .piece.net{border-left-color:var(--net)}
+  .piece.reg{border-left-color:var(--reg)}
+  .piece.sec{border-left-color:var(--sec)}
+  .piece.sta{border-left-color:var(--tf)}
+  .piece .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-2);display:block;margin-bottom:8px;
+  }
+  .piece p{margin:0;font-size:15px;color:var(--ink-2)}
+  .piece p + p{margin-top:10px}
+  .piece b{color:var(--ink);font-weight:600}
+
+  /* ---- apply order, styled like terraform plan output ---- */
+  .step{display:flex;gap:18px;margin-bottom:26px;align-items:flex-start}
+  .num{
+    font-family:var(--mono);font-size:12px;color:var(--tf);border:1px solid var(--tf);
+    border-radius:5px;padding:3px 8px;flex:none;margin-top:3px;
+  }
+  .step-body{flex:1;min-width:0}
+  .plan{
+    font-family:var(--mono);font-size:13px;background:#12161F;color:#C9D2E3;
+    border-radius:8px;padding:14px 16px;margin-top:10px;overflow-x:auto;
+  }
+  .plan span{color:#6FCF97}
+  .plan i{color:#7E8AA3;font-style:normal}
+
+  /* ---- viva ---- */
+  .qgroup{margin-bottom:30px}
+  .qgroup > h3{
+    font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--tf);
+    margin-bottom:12px;
+  }
+  details{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    margin-bottom:8px;overflow:hidden;
+  }
+  details[open]{border-color:#C3CBDC}
+  summary{
+    cursor:pointer;padding:14px 18px;font-weight:500;list-style:none;
+    display:flex;gap:12px;align-items:flex-start;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{
+    content:"?";font-family:var(--mono);color:var(--tf);flex:none;
+    font-size:14px;line-height:1.5;
+  }
+  summary:hover{background:#F8FAFE}
+  summary:focus-visible{outline:2px solid var(--tf);outline-offset:-2px}
+  .answer{padding:0 18px 16px 48px;color:var(--ink-2);font-size:15px}
+  .answer code,p code,li code{
+    font-family:var(--mono);font-size:.88em;background:#EDF0F7;
+    padding:1px 5px;border-radius:4px;color:var(--ink);
+  }
+  .answer strong{color:var(--ink)}
+
+  footer{
+    border-top:1px solid var(--line);padding-top:22px;font-size:14px;color:var(--ink-2);
+  }
+  ul{margin:0 0 14px;padding-left:20px}
+  li{margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Capstone · infrastructure workstream</p>
+  <h1>Everything I built, and <em>why each piece exists</em></h1>
+  <p class="lede">The ShopNow app needs somewhere to run. This is the AWS
+  infrastructure that gives it one — described entirely in Terraform, so it can
+  be rebuilt or deleted with a single command.</p>
+</header>
+
+<section>
+  <h2>The whole thing in one picture</h2>
+  <figure>
+    <svg viewBox="0 0 860 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture diagram: a browser reaches a load balancer in a public subnet, which forwards to pods on worker nodes in private subnets, which pull images from ECR.">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M1 1L9 5L1 9" fill="none" stroke="#4A5468" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <style>
+        .lbl{font-family:ui-monospace,Menlo,monospace;font-size:13px;fill:#161A24;font-weight:600}
+        .sub{font-family:system-ui,sans-serif;font-size:11px;fill:#4A5468}
+        .zone{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.08em;fill:#4A5468}
+        .ln{stroke:#4A5468;stroke-width:1.4;fill:none}
+      </style>
+
+      <!-- VPC boundary -->
+      <rect x="20" y="60" width="660" height="400" rx="12" fill="#fff" stroke="#0E7C86" stroke-width="1.5"/>
+      <text class="zone" x="36" y="82">VPC 10.0.0.0/16 · 2 availability zones</text>
+
+      <!-- public subnet band -->
+      <rect x="40" y="96" width="620" height="112" rx="8" fill="#F0FAFB" stroke="#0E7C86" stroke-width="1" stroke-dasharray="4 3"/>
+      <text class="zone" x="54" y="116">PUBLIC SUBNETS</text>
+      <rect x="60" y="126" width="240" height="60" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="180" y="150" text-anchor="middle">Load balancer</text>
+      <text class="sub" x="180" y="168" text-anchor="middle">the only public entry point</text>
+      <rect x="330" y="126" width="150" height="60" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="405" y="150" text-anchor="middle">NAT gateway</text>
+      <text class="sub" x="405" y="168" text-anchor="middle">outbound only</text>
+      <rect x="500" y="126" width="140" height="60" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="570" y="150" text-anchor="middle">Jenkins</text>
+      <text class="sub" x="570" y="168" text-anchor="middle">EC2 · Kaushik</text>
+
+      <!-- private subnet band -->
+      <rect x="40" y="232" width="620" height="200" rx="8" fill="#F7F4FC" stroke="#7B42BC" stroke-width="1" stroke-dasharray="4 3"/>
+      <text class="zone" x="54" y="252">PRIVATE SUBNETS · worker nodes</text>
+
+      <rect x="60" y="266" width="285" height="148" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="202" y="290" text-anchor="middle">Node 1</text>
+      <rect x="78" y="304" width="118" height="42" rx="5" fill="#F4F6FB" stroke="#DCE1EC"/>
+      <text class="sub" x="137" y="329" text-anchor="middle">frontend pod</text>
+      <rect x="210" y="304" width="118" height="42" rx="5" fill="#F4F6FB" stroke="#DCE1EC"/>
+      <text class="sub" x="269" y="329" text-anchor="middle">admin pod</text>
+      <rect x="78" y="358" width="118" height="42" rx="5" fill="#F4F6FB" stroke="#DCE1EC"/>
+      <text class="sub" x="137" y="383" text-anchor="middle">backend pod</text>
+      <rect x="210" y="358" width="118" height="42" rx="5" fill="#F4F6FB" stroke="#DCE1EC"/>
+      <text class="sub" x="269" y="383" text-anchor="middle">mongodb pod</text>
+
+      <rect x="375" y="266" width="265" height="148" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="507" y="290" text-anchor="middle">Node 2</text>
+      <text class="sub" x="507" y="330" text-anchor="middle">replicas of the same pods</text>
+      <text class="sub" x="507" y="350" text-anchor="middle">Kubernetes decides placement</text>
+      <rect x="420" y="366" width="174" height="34" rx="5" fill="#F4F6FB" stroke="#DCE1EC"/>
+      <text class="sub" x="507" y="387" text-anchor="middle">EBS volume for MongoDB</text>
+
+      <!-- outside VPC -->
+      <rect x="710" y="96" width="130" height="60" rx="6" fill="#fff" stroke="#B76E00"/>
+      <text class="lbl" x="775" y="120" text-anchor="middle">ECR</text>
+      <text class="sub" x="775" y="138" text-anchor="middle">3 image repos</text>
+
+      <rect x="710" y="186" width="130" height="60" rx="6" fill="#fff" stroke="#7B42BC"/>
+      <text class="lbl" x="775" y="210" text-anchor="middle">S3 state</text>
+      <text class="sub" x="775" y="228" text-anchor="middle">+ lock table</text>
+
+      <rect x="710" y="276" width="130" height="60" rx="6" fill="#fff" stroke="#C2405A"/>
+      <text class="lbl" x="775" y="300" text-anchor="middle">IAM roles</text>
+      <text class="sub" x="775" y="318" text-anchor="middle">cluster · nodes</text>
+
+      <!-- browser -->
+      <rect x="60" y="14" width="240" height="34" rx="6" fill="#fff" stroke="#DCE1EC"/>
+      <text class="lbl" x="180" y="36" text-anchor="middle">Browser</text>
+      <line class="ln" x1="180" y1="50" x2="180" y2="122" marker-end="url(#a)"/>
+      <line class="ln" x1="180" y1="190" x2="180" y2="262" marker-end="url(#a)"/>
+      <line class="ln" x1="405" y1="190" x2="405" y2="262" marker-end="url(#a)"/>
+      <path class="ln" d="M645 340 L710 320" marker-start="url(#a)"/>
+      <text class="sub" x="672" y="352" text-anchor="middle">pull</text>
+    </svg>
+    <figcaption>Traffic enters through one load balancer in a public subnet.
+    Everything that runs your code sits in private subnets, unreachable from the
+    internet, and reaches out through the NAT gateway to pull images from ECR.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The five pieces and what each is for</h2>
+  <div class="pieces">
+
+    <div class="piece net">
+      <span class="tag">Network</span>
+      <h3>VPC</h3>
+      <p>Your own private network inside AWS. Every server has to live in a
+      network — without one there is nowhere to put anything.</p>
+      <p><b>Public subnets</b> can be reached from the internet: the load
+      balancer and Jenkins go here. <b>Private subnets</b> cannot: the worker
+      nodes running your app go here, so nobody can reach them directly. They
+      still reach outward through the <b>NAT gateway</b> to download images.</p>
+    </div>
+
+    <div class="piece reg">
+      <span class="tag">Storage for images</span>
+      <h3>ECR</h3>
+      <p>A private Docker registry. Avinash builds the app into images; they have
+      to live somewhere the cluster can download from. Docker Hub is public, so
+      that would publish the project's code to the world.</p>
+      <p>Three repositories — frontend, admin, backend. MongoDB does not need one
+      because it uses the official public image.</p>
+    </div>
+
+    <div class="piece">
+      <span class="tag">Compute</span>
+      <h3>EKS</h3>
+      <p>Managed Kubernetes. You could run containers on a plain EC2 box with
+      <code>docker run</code> — until it reboots and nothing comes back, or a
+      deploy takes the site down mid-swap. Kubernetes restarts crashed
+      containers, runs several copies, and replaces them one at a time.</p>
+      <p>AWS runs the hard part (the <b>control plane</b>) for about $0.10/hour.
+      You manage the <b>worker nodes</b> — two EC2 instances that actually run
+      the containers.</p>
+    </div>
+
+    <div class="piece sec">
+      <span class="tag">Permissions</span>
+      <h3>IAM</h3>
+      <p>Three things here need AWS permissions and none of them is a person:
+      the control plane, the worker nodes, and Jenkins.</p>
+      <p>Each gets a <b>role</b> instead of a password. The alternative is
+      pasting an access key into Jenkins, where it sits on a server forever.
+      A role gives temporary credentials that rotate on their own.</p>
+    </div>
+
+    <div class="piece sta">
+      <span class="tag">Shared record</span>
+      <h3>S3 remote state</h3>
+      <p>Terraform keeps a file recording everything it created. That is how it
+      knows next time what already exists.</p>
+      <p>On a laptop it would mean nobody else can run Terraform, and a dead
+      laptop would leave AWS resources nobody can account for. In S3 it is
+      shared, versioned, encrypted, and <b>locked</b> so two people cannot write
+      at once.</p>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>What happens when you run apply</h2>
+  <p class="muted">Terraform works out the order itself from the references
+  between resources. Roughly what it does, and what each step creates:</p>
+
+  <div class="step">
+    <span class="num">00</span>
+    <div class="step-body">
+      <h3>Bootstrap — run once, separately</h3>
+      <p class="muted">Creates the bucket that stores the state for everything
+      below. It cannot be part of the main stack, because the backend cannot
+      store its own state before the bucket exists.</p>
+      <div class="plan"><span>+</span> aws_s3_bucket.tf_state<br><span>+</span> aws_s3_bucket_versioning.tf_state<br><span>+</span> aws_dynamodb_table.tf_lock</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="num">01</span>
+    <div class="step-body">
+      <h3>The network</h3>
+      <p class="muted">Around twenty resources. None optional if you want public
+      and private subnets across two availability zones.</p>
+      <div class="plan"><span>+</span> aws_vpc.this<br><span>+</span> aws_subnet.public[0], .public[1]<br><span>+</span> aws_subnet.private[0], .private[1]<br><span>+</span> aws_internet_gateway.this<br><span>+</span> aws_nat_gateway.this[0]<br><i># plus route tables, associations, security groups</i></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="num">02</span>
+    <div class="step-body">
+      <h3>Registry and permissions</h3>
+      <p class="muted">Independent of the network, so Terraform builds these at
+      the same time rather than waiting.</p>
+      <div class="plan"><span>+</span> aws_ecr_repository.this["…/frontend"]<br><span>+</span> aws_ecr_repository.this["…/admin"]<br><span>+</span> aws_ecr_repository.this["…/backend"]<br><span>+</span> aws_iam_role.jenkins<br><span>+</span> aws_iam_instance_profile.jenkins</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="num">03</span>
+    <div class="step-body">
+      <h3>The cluster</h3>
+      <p class="muted">The slow part — around ten minutes for the control plane
+      alone. It needs the subnets from step 01 and its own IAM role first.</p>
+      <div class="plan"><span>+</span> aws_iam_role.cluster<br><span>+</span> aws_eks_cluster.this<br><span>+</span> aws_iam_openid_connect_provider.this</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="num">04</span>
+    <div class="step-body">
+      <h3>Worker nodes</h3>
+      <p class="muted">Two EC2 instances that join the cluster. Spot capacity,
+      so roughly 60–70% cheaper than on-demand.</p>
+      <div class="plan"><span>+</span> aws_iam_role.node<br><span>+</span> aws_eks_node_group.this</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <span class="num">05</span>
+    <div class="step-body">
+      <h3>Add-ons</h3>
+      <p class="muted">These need running nodes to schedule their own pods onto,
+      which is why they come last.</p>
+      <div class="plan"><span>+</span> aws_eks_addon.vpc_cni <i># pod networking</i><br><span>+</span> aws_eks_addon.coredns <i># name lookup</i><br><span>+</span> aws_eks_addon.kube_proxy<br><span>+</span> aws_eks_addon.ebs_csi <i># storage for MongoDB</i><br><span>+</span> aws_eks_addon.metrics_server <i># autoscaling</i></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Viva questions</h2>
+  <p class="muted">Click a question, answer it out loud, then open it and
+  compare. If your answer was close, move on.</p>
+
+  <div class="qgroup">
+    <h3>Terraform basics</h3>
+
+    <details><summary>What is Terraform and why use it instead of the AWS console?</summary>
+    <div class="answer">It builds cloud resources from files that describe what you want, rather than from clicking through forms. That gives you four things clicking cannot: you can rebuild the same environment on demand, review changes before they happen with <code>plan</code>, track every change in git, and delete everything cleanly with <code>destroy</code> instead of hunting for leftovers.</div></details>
+
+    <details><summary>What is the state file and why is it in S3?</summary>
+    <div class="answer">It records every resource Terraform has created, so next run it knows what already exists. It is in S3 because four people share this project — on one laptop, nobody else could run Terraform without creating duplicates, and a lost laptop would mean nothing knows what exists in AWS. S3 adds versioning to roll back a corrupted state, encryption because the file holds resource IDs, and locking so two simultaneous applies cannot overwrite each other.</div></details>
+
+    <details><summary>Why is bootstrap a separate stack?</summary>
+    <div class="answer">Chicken and egg. The S3 backend cannot store the state of the bucket that <em>is</em> the backend, because the bucket does not exist yet. So bootstrap keeps its state in a local file, creates the bucket, and is then essentially never run again.</div></details>
+
+    <details><summary>What is the difference between resource, variable and output?</summary>
+    <div class="answer"><strong>resource</strong> creates something in AWS — it is the only one that does. <strong>variable</strong> declares a value the folder accepts as input, referred to as <code>var.name</code>. <strong>output</strong> publishes a value so the calling code, or a person, can use it. Without an output, a value stays trapped inside its module even though the resource exists.</div></details>
+
+    <details><summary>Why modules instead of one big file?</summary>
+    <div class="answer">Reuse and blast radius. A module is like a function: <code>modules/vpc</code> describes how to build a VPC without saying what size or where. A future <code>envs/prod</code> calls the same module with different numbers, so the two environments cannot silently drift apart. It also means everything about the network is in one folder rather than scattered.</div></details>
+
+    <details><summary>What is the difference between plan and apply?</summary>
+    <div class="answer"><code>plan</code> reads the real state of AWS, compares it to the code, and shows what it would change — it creates nothing and costs nothing. <code>apply</code> executes it. Running <code>plan -out=tfplan</code> then <code>apply tfplan</code> applies exactly what you reviewed, with no chance of something changing in between. That is what a pipeline does.</div></details>
+
+    <details><summary>Why can't the backend block use variables?</summary>
+    <div class="answer">Terraform has to find and load the state file before it can evaluate anything else, including variables. So the backend is configured with a separate file passed at init time: <code>terraform init -backend-config=backend.hcl</code>. That also lets a second environment point at a different bucket with no code change.</div></details>
+
+    <details><summary>What is the difference between count and for_each?</summary>
+    <div class="answer"><code>count</code> gives a list indexed by position, so removing a middle item renumbers everything after it and Terraform destroys and recreates them. <code>for_each</code> gives a map keyed by name, so removing one leaves the others untouched. Subnets use count because they are interchangeable; ECR repositories use for_each so deleting <code>admin</code> does not disturb <code>frontend</code>.</div></details>
+  </div>
+
+  <div class="qgroup">
+    <h3>Networking</h3>
+
+    <details><summary>Why public and private subnets rather than just one kind?</summary>
+    <div class="answer">Different jobs. Load balancers and the NAT gateway have to be reachable from the internet, so they go in public subnets. Worker nodes running the application should not be reachable, so they go in private ones. Nodes still reach outward through NAT to pull images and talk to the EKS API — outbound works, inbound does not.</div></details>
+
+    <details><summary>Internet gateway versus NAT gateway?</summary>
+    <div class="answer">An internet gateway is two-way and free: the internet can reach your resources and they can reach out. A NAT gateway is outbound only and costs around $32/month plus data charges: private resources can start a connection out, nothing outside can start one in. That one-way property is the entire security argument for private subnets.</div></details>
+
+    <details><summary>What do the kubernetes.io subnet tags do?</summary>
+    <div class="answer">When the ingress controller creates a Service of type LoadBalancer, the AWS cloud controller has to work out which subnets to place the load balancer in. It looks for <code>kubernetes.io/role/elb=1</code> on public subnets and <code>internal-elb</code> on private ones. Without them, provisioning fails with a subnet-discovery error — and nothing in the Kubernetes error mentions tags, so it is a confusing failure.</div></details>
+
+    <details><summary>Why two availability zones?</summary>
+    <div class="answer">EKS requires subnets in at least two — it refuses to create a cluster otherwise. Beyond the requirement, AZs are physically separate data centres, so spreading nodes across two means one failing does not take the whole application down.</div></details>
+
+    <details><summary>Why one NAT gateway instead of one per AZ?</summary>
+    <div class="answer">Cost. Each is about $32/month before data charges. One per AZ is the common tutorial default and triples that for no benefit in a dev environment. The code supports either — <code>single_nat_gateway = false</code> switches it — and per-AZ would be right in production, where losing one AZ's NAT should not affect the other.</div></details>
+
+    <details><summary>How did you decide the CIDR ranges?</summary>
+    <div class="answer">The VPC is <code>10.0.0.0/16</code> and Terraform computes the subnets with <code>cidrsubnet(vpc_cidr, 4, i)</code>, which adds four bits and takes block <em>i</em> — giving <code>10.0.0.0/20</code>, <code>10.0.16.0/20</code> and so on. Computing them means they never overlap and they recalculate correctly if the AZ count changes.</div></details>
+  </div>
+
+  <div class="qgroup">
+    <h3>EKS and Kubernetes</h3>
+
+    <details><summary>Why Kubernetes at all, rather than just running Docker on EC2?</summary>
+    <div class="answer">Docker on EC2 works until the server reboots and nothing comes back, or traffic doubles and you need a second copy, or a deploy takes the site down during the swap. Kubernetes handles restarting crashed containers, running several replicas, and rolling updates one pod at a time.</div></details>
+
+    <details><summary>Why EKS rather than installing Kubernetes yourself?</summary>
+    <div class="answer">Kubernetes has a control plane (the brain) and worker nodes (the machines). The control plane is genuinely hard to install and keep healthy — etcd, certificates, upgrades. EKS runs it for around $0.10/hour and you only manage nodes.</div></details>
+
+    <details><summary>What is IRSA and why does the EBS CSI driver need it?</summary>
+    <div class="answer">IAM Roles for Service Accounts. Every EKS cluster publishes an OIDC identity endpoint; registering it with IAM means a pod's service account token can be exchanged for temporary AWS credentials. The condition in the trust policy names one specific service account, so only the EBS CSI controller can assume that role. The alternative — attaching EBS permissions to the node role — would let <em>every</em> pod on that node create and delete volumes.</div></details>
+
+    <details><summary>Why does the node group need an explicit depends_on?</summary>
+    <div class="answer">Terraform infers ordering from references, so it knows the node group needs the IAM role. What it cannot see is that the role needs its <em>policies</em> attached first. Without <code>depends_on</code>, nodes occasionally launch a moment before they are permitted to join the cluster and fail. It is the standard example of when depends_on is genuinely necessary.</div></details>
+
+    <details><summary>Why ignore_changes on desired_size?</summary>
+    <div class="answer">Once the autoscaler or HPA scales the group to three nodes, reality no longer matches <code>desired_size = 2</code> in the code. Without that lifecycle rule, the next apply would scale it back down. It means "I set the initial value, something else owns it after that."</div></details>
+
+    <details><summary>Why Spot instances, and what is the risk?</summary>
+    <div class="answer">Spare AWS capacity at roughly 60–70% off. The risk is reclamation with a two-minute warning, which is fine here because the app is replicated and stateless and EKS drains the node gracefully. MongoDB is the one stateful piece — in production it would sit on on-demand nodes or move to a managed database.</div></details>
+
+    <details><summary>How does Jenkins get kubectl access without editing aws-auth?</summary>
+    <div class="answer">EKS Access Entries. Historically you hand-edited a ConfigMap called <code>aws-auth</code> inside the cluster, where a typo could lock everyone out permanently. Access Entries are a proper AWS API, so Terraform creates one for the Jenkins role and associates the cluster-admin policy with it.</div></details>
+
+    <details><summary>What is a StorageClass and why does MongoDB need one?</summary>
+    <div class="answer">It tells Kubernetes how to turn a storage request into a real disk. EKS ships no default, so a PersistentVolumeClaim with no storage class stays Pending forever. Terraform installs the EBS CSI driver; the <code>gp3</code> StorageClass tells Kubernetes to use it. It also sets <code>WaitForFirstConsumer</code>, which delays creating the volume until a node is chosen — EBS volumes cannot cross availability zones, so binding immediately can strand a pod from its own disk.</div></details>
+  </div>
+
+  <div class="qgroup">
+    <h3>Cost and security</h3>
+
+    <details><summary>What does this cost, and what did you do about it?</summary>
+    <div class="answer">Roughly $0.30–0.35/hour running: the control plane is $0.10, two Spot nodes about $0.026, one NAT gateway $0.045, the rest pennies. Decisions in the code: Spot rather than on-demand, one shared NAT rather than one per AZ, ECR lifecycle policies so image storage stays flat, seven-day log retention, 20 GiB root volumes instead of 50, and non-current state versions expiring after 30 days.</div></details>
+
+    <details><summary>Why does Jenkins use an instance profile instead of access keys?</summary>
+    <div class="answer">An access key is a long-lived secret that would sit on the Jenkins server indefinitely, and anyone who reads it has the AWS account. An instance profile makes AWS hand the machine temporary credentials that rotate automatically and cannot be copied off. The AWS CLI, Docker and kubectl all pick them up with no configuration.</div></details>
+
+    <details><summary>Why is one IAM statement scoped to specific ARNs and another wildcarded?</summary>
+    <div class="answer">Every ECR action in the policy is scoped to the three repository ARNs except <code>ecr:GetAuthorizationToken</code>, which AWS does not support scoping to a repository — it physically cannot be narrowed. The rest are least-privilege.</div></details>
+
+    <details><summary>Why not commit the state file to git?</summary>
+    <div class="answer">It contains resource IDs and can contain secrets in plain text, git has no locking so two people would produce merge conflicts in a machine-generated file, and it would be one more thing to forget. The <code>.gitignore</code> excludes it deliberately.</div></details>
+  </div>
+
+  <div class="qgroup">
+    <h3>Your work and the team</h3>
+
+    <details><summary>What exactly was your contribution?</summary>
+    <div class="answer">The whole infrastructure layer: VPC with public and private subnets across two AZs, internet and NAT gateways, route tables, security groups, three ECR repositories with lifecycle policies, IAM roles for the cluster, the nodes and Jenkins, the EKS cluster with a Spot node group and five add-ons, and remote state in S3 with locking. Everything the other three workstreams run on top of.</div></details>
+
+    <details><summary>How do your teammates get what they need from you?</summary>
+    <div class="answer">Terraform outputs. Kaushik takes the Jenkins instance profile, security group and a public subnet ID; Avinash takes the ECR URLs, cluster name and the Docker build argument; Ravi takes the private subnet IDs and node group name. Nobody has to look anything up in the AWS console.</div></details>
+
+    <details><summary>What would you do differently with more time?</summary>
+    <div class="answer">Add VPC endpoints so ECR traffic avoids the NAT gateway's data charges, install Cluster Autoscaler or Karpenter so nodes scale automatically rather than sitting at a fixed range, narrow the Jenkins Terraform permissions from PowerUserAccess to a hand-written least-privilege policy, and add a <code>prod</code> environment — the module structure already supports it.</div></details>
+
+    <details><summary>What was the hardest problem you hit?</summary>
+    <div class="answer">Pick a real one and be specific. Good candidates: discovering the team was split across two AWS accounts, which meant the cluster could not pull images from a teammate's private ECR; or the ordering problem where add-ons must wait for nodes to exist, since their own pods need somewhere to be scheduled.</div></details>
+  </div>
+</section>
+
+<footer>
+  <p>Longer written explanations in <code>docs/terraform-from-zero.md</code>,
+  <code>docs/tf-files-explained.md</code> and <code>docs/code-walkthrough.md</code>.</p>
+</footer>
+
+</div>
+</body>
+</html>

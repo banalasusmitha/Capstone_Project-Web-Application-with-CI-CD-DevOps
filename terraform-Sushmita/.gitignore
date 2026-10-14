@@ -23,3 +23,11 @@ secrets.tfvars
 *.swp
 .idea/
 .vscode/
+
+# Lock files created when running `terraform test` inside a module folder
+modules/**/.terraform.lock.hcl
+
+# Never commit SSH private keys. The .pub file is fine - this only blocks
+# the private half.
+*.pem
+shopnow-ci-agent

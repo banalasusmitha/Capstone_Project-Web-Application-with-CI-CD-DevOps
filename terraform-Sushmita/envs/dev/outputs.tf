@@ -79,3 +79,27 @@ output "kubeconfig_command" {
   description = "Run this to point kubectl at the new cluster."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+###############################################################################
+# CI AGENT  (Sprint 3) - what Ansible and Jenkins need
+###############################################################################
+
+output "ci_agent_public_ip" {
+  description = "Public IP of the CI agent - the host Ansible connects to."
+  value       = var.create_ci_agent ? module.ci_agent[0].public_ip : null
+}
+
+output "ci_agent_instance_id" {
+  description = "EC2 instance ID of the CI agent."
+  value       = var.create_ci_agent ? module.ci_agent[0].instance_id : null
+}
+
+output "ci_agent_ssh_command" {
+  description = "SSH into the CI agent (private key stays on your machine)."
+  value       = var.create_ci_agent ? "ssh -i ~/.ssh/shopnow-ci-agent ec2-user@${module.ci_agent[0].public_ip}" : null
+}
+
+output "ansible_inventory" {
+  description = "Static inventory line for Ansible. The aws_ec2 dynamic plugin can find the same host by tag Role=ci_agent."
+  value       = var.create_ci_agent ? "${module.ci_agent[0].public_ip} ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/shopnow-ci-agent" : null
+}

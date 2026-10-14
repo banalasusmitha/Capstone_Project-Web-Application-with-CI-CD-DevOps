@@ -190,3 +190,25 @@ variable "allow_jenkins_to_run_terraform" {
   type        = bool
   default     = false
 }
+
+###############################################################################
+# CI AGENT  (Sprint 3)
+###############################################################################
+
+variable "create_ci_agent" {
+  description = "Create the CI agent EC2 that Ansible configures and Jenkins builds on."
+  type        = bool
+  default     = false
+}
+
+variable "ci_agent_public_key" {
+  description = "Contents of the SSH public key (.pub) for the CI agent. Not a secret - safe to commit."
+  type        = string
+  default     = ""
+}
+
+variable "ci_agent_instance_type" {
+  description = "Instance type for the CI agent. Must be free-tier eligible on the AWS Free Plan."
+  type        = string
+  default     = "c7i-flex.large"
+}

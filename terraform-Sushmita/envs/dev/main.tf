@@ -111,3 +111,29 @@ module "eks" {
 
   tags = local.tags
 }
+
+###############################################################################
+# CI AGENT  (Sprint 3)
+# A Terraform-provisioned EC2 for Ansible to configure and Jenkins to build on.
+# Off by default - turn on in terraform.tfvars once a public key is supplied.
+###############################################################################
+
+module "ci_agent" {
+  source = "../../modules/ci-agent"
+  count  = var.create_ci_agent ? 1 : 0
+
+  name = local.name
+
+  subnet_id             = module.vpc.public_subnet_ids[0]
+  security_group_id     = module.vpc.jenkins_security_group_id
+  instance_profile_name = module.iam.jenkins_instance_profile_name
+
+  public_key    = var.ci_agent_public_key
+  instance_type = var.ci_agent_instance_type
+
+  tags = local.tags
+
+  # An EC2 in a public subnet is only reachable once the internet gateway and
+  # public route exist. Waiting on the whole VPC module guarantees that.
+  depends_on = [module.vpc]
+}
