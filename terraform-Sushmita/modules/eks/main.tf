@@ -77,9 +77,16 @@ resource "aws_eks_cluster" "this" {
 
   # API_AND_CONFIG_MAP lets us grant kubectl access with EKS Access Entries
   # (the modern replacement for hand-editing the aws-auth ConfigMap).
+  #
+  # bootstrap_cluster_creator_admin_permissions is FALSE on purpose. When true,
+  # EKS silently creates an access entry for whoever runs `apply`. If that is
+  # the Jenkins role - which is also in cluster_admin_principals below -
+  # Terraform then tries to create the same entry and fails with "already
+  # exists". With it false, every admin (people and Jenkins) is listed
+  # explicitly in terraform.tfvars, and it works no matter who applies.
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
-    bootstrap_cluster_creator_admin_permissions = true
+    bootstrap_cluster_creator_admin_permissions = false
   }
 
   tags = merge(var.tags, {

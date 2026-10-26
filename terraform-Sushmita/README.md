@@ -20,6 +20,7 @@ infrastructure failures if you have not seen them before.
 ```
 terraform-Sushmita/
 ├── bootstrap/            # Run ONCE: S3 state bucket + DynamoDB lock table
+├── jenkins/              # Jenkins server - its own stack, separate from the cluster
 ├── modules/
 │   ├── vpc/              # VPC, subnets, IGW, NAT, route tables, SGs
 │   ├── ecr/              # One repo per service + lifecycle policies
@@ -53,6 +54,9 @@ no module code changes.
 | CI agent  | (Sprint 3, opt-in) EC2 with key pair and the Jenkins instance profile — the host Ansible configures |
 | State     | S3 bucket (versioned, encrypted, lifecycle) + DynamoDB lock table |
 
+> **Demo day?** Follow [`docs/demo-day-runbook.md`](docs/demo-day-runbook.md):
+> everything up, screenshots, everything down, the same day.
+>
 > **Sprint 3?** [`docs/sprint3-ci-agent.md`](docs/sprint3-ci-agent.md) — the
 > Terraform-provisioned EC2 that Ansible configures, step by step.
 >

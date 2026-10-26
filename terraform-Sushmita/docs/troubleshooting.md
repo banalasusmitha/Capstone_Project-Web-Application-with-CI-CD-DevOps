@@ -98,3 +98,18 @@ terraform force-unlock <LOCK_ID>
 ```
 
 Only do this when you are certain no one else is applying.
+
+## `jenkins/`: `no matching EC2 VPC found`
+
+The Jenkins stack uses the account's default VPC, and it has been deleted.
+Recreate it (free), then apply again:
+
+```bash
+aws ec2 create-default-vpc --region ap-south-1
+```
+
+## Jenkins can't run `kubectl` against the cluster
+
+The cluster only grants the Jenkins server access if the server existed when
+the cluster was built. Run `terraform apply` in `envs/dev` once more and it
+adds the access.

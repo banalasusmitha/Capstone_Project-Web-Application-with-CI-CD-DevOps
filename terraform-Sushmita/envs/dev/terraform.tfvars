@@ -47,7 +47,11 @@ max_size       = 4
 
 # Teammates who need kubectl access. Add Ravi and Kaushik once their
 # IAM users exist - get each ARN from `aws sts get-caller-identity`.
+# The cluster no longer auto-grants admin to whoever runs apply, so every
+# admin is listed here - including you. The Jenkins server's role is added
+# automatically once the ../../jenkins/ stack exists.
 team_principal_arns = [
+  "arn:aws:iam::095355901688:user/susmitha",
   "arn:aws:iam::095355901688:user/avinash-devops",
 ]
 
@@ -55,8 +59,9 @@ team_principal_arns = [
 tf_state_bucket    = "shopnow-tfstate-095355901688"
 tf_lock_table_name = "shopnow-tf-locks"
 
-# Flip to true in Sprint 2 when the Jenkins job starts running terraform apply.
-allow_jenkins_to_run_terraform = true
+# The Jenkins SERVER has its own admin role in ../../jenkins/, so the role
+# used by the CI agent doesn't need Terraform rights.
+allow_jenkins_to_run_terraform = false
 
 # --- CI agent (Sprint 3) ----------------------------------------------------
 # An EC2 that Ansible configures (Docker, kubectl) and Jenkins builds

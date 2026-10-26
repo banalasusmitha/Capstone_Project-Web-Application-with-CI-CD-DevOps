@@ -22,6 +22,14 @@ locals {
   node_subnet_ids = var.enable_nat_gateway ? module.vpc.private_subnet_ids : module.vpc.public_subnet_ids
 }
 
+# The Jenkins server lives in its own stack (../../jenkins/) so that
+# destroying the cluster never destroys the machine running the destroy.
+# Look its role up by name: if that stack hasn't been applied yet this simply
+# returns nothing, instead of failing.
+data "aws_iam_roles" "jenkins_server" {
+  name_regex = "^${var.jenkins_server_role_name}$"
+}
+
 ###############################################################################
 # NETWORKING
 ###############################################################################
@@ -103,10 +111,15 @@ module "eks" {
   min_size       = var.min_size
   max_size       = var.max_size
 
-  # Jenkins plus any teammate ARNs listed in terraform.tfvars get kubectl access.
+  # Who gets kubectl admin on the cluster:
+  #   - the CI agent's role (module.iam)
+  #   - everyone in team_principal_arns (terraform.tfvars)
+  #   - the Jenkins server's role from ../../jenkins/, IF that stack exists
+  # Keyed by static labels so Terraform can build the for_each at plan time.
   cluster_admin_principals = merge(
     { jenkins = module.iam.jenkins_role_arn },
-    { for arn in var.team_principal_arns : arn => arn }
+    { for arn in var.team_principal_arns : arn => arn },
+    { for arn in data.aws_iam_roles.jenkins_server.arns : "jenkins-server" => arn }
   )
 
   tags = local.tags

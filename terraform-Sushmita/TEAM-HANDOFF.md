@@ -39,8 +39,32 @@ If yours differs from the rest of the team, say so before doing any more work.
 
 ## Kaushik - Jenkins
 
-| Output | For |
-|--------|-----|
+**The Jenkins server now comes from Terraform**: `terraform-Sushmita/jenkins/`.
+Ask Susmitha to `apply` it when you need it; it's ready in about 3 minutes.
+Please don't create EC2 instances by hand. A manual server is invisible to
+`terraform destroy` and keeps billing, which is part of how the credits ran
+out.
+
+| Output (`terraform output` in `jenkins/`) | For |
+|---|---|
+| `jenkins_url` | where Jenkins will be, once installed |
+| `ssh_command` | SSH in to install Jenkins |
+| `role_arn` | the server's IAM role |
+
+- The server is a plain Amazon Linux 2023 machine. **Installing Jenkins and
+  plugins is yours** (or Ravi's Ansible playbook).
+- Its IAM role has admin rights, so **Terraform, ECR push and the AWS CLI all
+  work with no access keys**. Delete `aws-access-key-id` and
+  `aws-secret-access-key` from the Jenkinsfile.
+- It gets **`kubectl` admin on the cluster automatically**, as long as the
+  Jenkins server is built before the cluster.
+- Jenkins lives in its own stack so that a `terraform destroy` on the cluster,
+  run from Jenkins, never deletes Jenkins itself.
+
+Tag images with `$BUILD_NUMBER`, not `v1`, and build frontend/admin with
+`--build-arg USER_NAME=avinash`.
+
+--------|-----|
 | `jenkins_instance_profile_name` | attach to the Jenkins EC2 |
 | `jenkins_security_group_id` | its security group (22, 8080 open) |
 | `public_subnet_ids` | launch it here |

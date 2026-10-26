@@ -11,6 +11,9 @@ mock_provider "aws" {
   mock_data "aws_caller_identity" {
     defaults = { account_id = "095355901688" }
   }
+  mock_data "aws_iam_roles" {
+    defaults = { arns = [] }
+  }
   mock_data "aws_iam_policy_document" {
     defaults = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
   }
@@ -103,3 +106,17 @@ run "agent_on_with_valid_key" {
   }
 }
 
+
+run "jenkins_server_role_is_picked_up_when_it_exists" {
+  command = plan
+
+  override_data {
+    target = data.aws_iam_roles.jenkins_server
+    values = { arns = ["arn:aws:iam::095355901688:role/shopnow-jenkins-server-role"] }
+  }
+
+  assert {
+    condition     = contains(data.aws_iam_roles.jenkins_server.arns, "arn:aws:iam::095355901688:role/shopnow-jenkins-server-role")
+    error_message = "The Jenkins server role should be found and granted access"
+  }
+}

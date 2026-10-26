@@ -131,15 +131,27 @@ resource "aws_iam_role_policy_attachment" "jenkins" {
   policy_arn = aws_iam_policy.jenkins.arn
 }
 
-# Optional: let Jenkins run `terraform apply` itself in Sprint 2.
-# PowerUserAccess is broad - enable it only while the infra job runs, and
-# say so in the viva. A least-privilege alternative is a custom policy
-# limited to ec2:*, eks:*, iam:PassRole and ecr:*.
+# Optional: let this role run `terraform apply` on envs/dev.
+#
+# PowerUserAccess alone is NOT enough: it deliberately excludes IAM, and this
+# Terraform creates IAM roles, policies and an OIDC provider. So IAMFullAccess
+# is attached alongside it. Be honest in the viva: being able to create IAM
+# roles is effectively admin, so this role is admin-equivalent while enabled.
+#
+# Normally OFF - the Jenkins server has its own admin role in ../../jenkins/,
+# and this role is only used by the CI agent, which never runs Terraform.
 resource "aws_iam_role_policy_attachment" "jenkins_terraform" {
   count = var.allow_jenkins_to_run_terraform ? 1 : 0
 
   role       = aws_iam_role.jenkins.name
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/PowerUserAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins_terraform_iam" {
+  count = var.allow_jenkins_to_run_terraform ? 1 : 0
+
+  role       = aws_iam_role.jenkins.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/IAMFullAccess"
 }
 
 # SSM lets you open a shell on the Jenkins box without exposing port 22.

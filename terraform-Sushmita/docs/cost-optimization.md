@@ -89,3 +89,54 @@ aws elbv2 describe-load-balancers --region ap-south-1
 ```
 
 The state bucket and lock table are intentionally **not** destroyed.
+
+---
+
+## October 2026: the credits incident, and what changed
+
+### What happened
+
+The account ran out of its $115.94 in Free Plan credits and was suspended in
+mid-October. Four things caused it:
+
+1. **A cluster was created on 27 August and never destroyed.** It ran for
+   about two months.
+2. **Its Kubernetes version (1.33) moved into EKS extended support** while it
+   was running. Extended support costs **$0.60 per cluster-hour instead of
+   $0.10**, six times as much.
+3. **A 20 GiB disk had been orphaned since 3 August**, left behind by an EC2
+   instance that was deleted without it.
+4. **A Jenkins server and its Elastic IP were created by hand in the
+   console.** Terraform didn't know about them, so `terraform destroy` never
+   removed them.
+
+None of these were visible without going looking. That's the real lesson:
+**cloud costs fail silently.**
+
+### What was done about it
+
+| Fix | Effect |
+|---|---|
+| Destroyed the cluster: 41 resources, with `-target` so ECR images, IAM and the state bucket were kept | Stopped the big charges immediately |
+| Deleted the orphaned disk | Stopped a small charge that had run since August |
+| Moved Terraform to **Kubernetes 1.36**, checked with `aws eks describe-cluster-versions` | Control plane back to $0.10/hour |
+| **AWS Budget alert** at $50/month | The next forgotten resource sends an email |
+| **Jenkins server moved into Terraform** (`jenkins/`), with `delete_on_termination = true` on its disk and an Elastic IP released on destroy | One `destroy` removes it completely; no orphans possible |
+| **Demo-day runbook** (`docs/demo-day-runbook.md`) | Everything goes up and comes down the same day, ending with a check that nothing is left |
+
+### The rules this produced
+
+- **Destroy the same day.** No cluster runs overnight unless someone is
+  actively using it.
+- **Nothing gets created by hand.** If it isn't in Terraform, `destroy` can't
+  remove it.
+- **Check the Kubernetes version before every build.** Versions move into
+  extended support on a schedule, and the price jumps when they do.
+- **End every session with the zero-check** from step 8 of the runbook.
+
+### Possible next step
+
+The account is now on the paid plan, so the Free Plan's instance-type limits
+no longer apply. Moving the worker nodes back to **Spot** `t3.medium` would
+cut node cost by about 60–70%. It was left on on-demand for now, to avoid
+Spot interruptions during the demo.

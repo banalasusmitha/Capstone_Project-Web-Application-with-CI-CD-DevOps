@@ -212,3 +212,9 @@ variable "ci_agent_instance_type" {
   type        = string
   default     = "c7i-flex.large"
 }
+
+variable "jenkins_server_role_name" {
+  description = "IAM role name of the Jenkins server created by ../../jenkins/. Gets kubectl admin automatically once that stack exists."
+  type        = string
+  default     = "shopnow-jenkins-server-role"
+}
