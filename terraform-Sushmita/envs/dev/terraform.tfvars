@@ -16,7 +16,7 @@ enable_nat_gateway = true
 single_nat_gateway = true
 
 # Home IPs change - re-run `curl ifconfig.me` and update if SSH stops working.
-admin_cidrs = ["203.212.218.140/32"]
+admin_cidrs = ["116.73.141.79/32"]
 
 # --- Application identity ---------------------------------------------------
 # This one value drives three things and they must all agree:

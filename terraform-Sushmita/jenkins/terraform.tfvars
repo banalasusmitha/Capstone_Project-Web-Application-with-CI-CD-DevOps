@@ -2,7 +2,7 @@
 
 # Everyone who needs SSH or the Jenkins UI. Re-check with: curl ifconfig.me
 admin_cidrs = [
-  "203.212.218.140/32", # Susmitha
+  "116.73.141.79/32", # Susmitha
 ]
 
 # Same public key as the CI agent, so one private key (~/.ssh/shopnow-ci-agent)
