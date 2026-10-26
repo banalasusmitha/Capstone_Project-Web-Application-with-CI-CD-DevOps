@@ -6,7 +6,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Kubernetes minor version for the control plane."
   type        = string
-  default     = "1.33"
+  default     = "1.36"
 }
 
 variable "public_subnet_ids" {

@@ -34,7 +34,7 @@ services                = ["frontend", "admin", "backend"]
 
 # --- EKS --------------------------------------------------------------------
 cluster_name       = "shopnow-eks-dev"
-kubernetes_version = "1.33"
+kubernetes_version = "1.36"
 
 # metrics-server is required by the HPA in Sprint 4.
 enable_metrics_server = true
