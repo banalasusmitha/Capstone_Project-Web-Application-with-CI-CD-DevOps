@@ -1,0 +1,103 @@
+# Jenkins Configuration as Code (JCasC)
+#
+# Loaded at every Jenkins start (CASC_JENKINS_CONFIG points here). It sets up
+# the admin user, security and the three pipeline jobs, so a rebuilt Jenkins
+# server comes back identical without any clicking in the UI.
+#
+# ${...} values come from /etc/sysconfig/jenkins-casc, written by
+# install-jenkins.sh. No secrets are stored in this file.
+
+jenkins:
+  systemMessage: "ShopNow capstone CI/CD - jobs are defined in git (jenkins-Kaushik/). Do not edit them in the UI."
+  # infra -> config -> app can run back to back; 3 executors avoids a deadlock
+  # while the infra job waits for the config job.
+  numExecutors: 3
+  mode: NORMAL
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          name: "Capstone Admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: true
+
+  # Build scripts run on this server, so remote agents are not needed.
+  slaveAgentPort: -1
+
+unclassified:
+  location:
+    url: "${JENKINS_PUBLIC_URL}"
+
+# -----------------------------------------------------------------------------
+# Jobs. Each one reads its Jenkinsfile from the capstone repository, so the
+# pipeline itself is versioned in git (Pipeline as Code).
+# -----------------------------------------------------------------------------
+jobs:
+  - script: >
+      folder('shopnow') {
+        displayName('ShopNow Capstone')
+        description('Terraform -> Ansible -> Build/Deploy pipelines for the ShopNow application.')
+      }
+
+  - script: >
+      pipelineJob('shopnow/1-infra-terraform') {
+        description('Sprint 2: Terraform plan / apply / destroy for the EKS environment (terraform-Sushmita/envs/dev). Plan runs without approval; apply and destroy wait for a human. On a successful apply it triggers 2-config-ansible.')
+        logRotator { numToKeep(30) }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${CAPSTONE_REPO}') }
+                branch('*/${CAPSTONE_BRANCH}')
+              }
+            }
+            scriptPath('jenkins-Kaushik/pipelines/Jenkinsfile.infra')
+            lightweight(true)
+          }
+        }
+      }
+
+  - script: >
+      pipelineJob('shopnow/2-config-ansible') {
+        description('Sprint 3: runs the Ansible playbook (ansible-Ravi/site.yml) against the Terraform-built CI agent. Triggered by 1-infra-terraform after apply.')
+        logRotator { numToKeep(30) }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${CAPSTONE_REPO}') }
+                branch('*/${CAPSTONE_BRANCH}')
+              }
+            }
+            scriptPath('jenkins-Kaushik/pipelines/Jenkinsfile.config')
+            lightweight(true)
+          }
+        }
+      }
+
+  - script: >
+      pipelineJob('shopnow/3-app-cicd') {
+        description('Sprint 4: build, test, push to ECR and deploy ShopNow to EKS. Triggered by a GitHub push (webhook) or SCM polling, and after a fresh environment is configured.')
+        logRotator { numToKeep(30) }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${CAPSTONE_REPO}') }
+                branch('*/${CAPSTONE_BRANCH}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }
