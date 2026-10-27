@@ -1,0 +1,228 @@
+// =============================================================================
+// Job: shopnow/1-infra-terraform                                     (Sprint 2)
+//
+// Provisions the EKS environment from terraform-Sushmita/envs/dev.
+//   plan    - init, validate, plan. No approval, nothing changes. (default)
+//   apply   - plan, wait for a human to approve, apply, connect kubectl,
+//             then trigger 2-config-ansible (Sprint 3: Ansible after Terraform).
+//   destroy - remove load balancers / volumes Kubernetes created, then
+//             terraform destroy after a typed confirmation.
+//
+// AWS access: the Jenkins server's IAM instance profile. No access keys.
+// State:      S3 bucket shopnow-tfstate-095355901688 (backend.hcl), with locking.
+// =============================================================================
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ACTION', choices: ['plan', 'apply', 'destroy'],
+               description: 'plan is always safe. apply / destroy ask for approval before changing anything.')
+        booleanParam(name: 'RUN_ANSIBLE_AFTER', defaultValue: true,
+               description: 'After a successful apply, trigger 2-config-ansible.')
+        booleanParam(name: 'DEPLOY_APP_AFTER', defaultValue: true,
+               description: 'Passed on to 2-config-ansible: deploy the app once the agent is configured.')
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+        timeout(time: 90, unit: 'MINUTES')   // a full EKS create takes ~20 min
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'ap-south-1'
+        AWS_REGION         = 'ap-south-1'
+        EXPECTED_ACCOUNT   = '095355901688'        // shared team account
+        CLUSTER_NAME       = 'shopnow-eks-dev'
+        TF_DIR             = 'terraform-Sushmita/envs/dev'
+        TF_IN_AUTOMATION   = 'true'
+        TF_INPUT           = 'false'
+        KUBECONFIG         = "${WORKSPACE}/.kube/config"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git log -1 --format="Commit %h by %an: %s"'
+            }
+        }
+
+        stage('Preflight') {
+            steps {
+                sh '''
+                    set -e
+                    terraform -version | head -1
+                    aws --version
+                    kubectl version --client | head -1
+                    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+                    echo "Running as: $(aws sts get-caller-identity --query Arn --output text)"
+                    if [ "$ACCOUNT" != "$EXPECTED_ACCOUNT" ]; then
+                        echo "ERROR: credentials are for account $ACCOUNT, expected $EXPECTED_ACCOUNT. Stopping before Terraform touches the wrong account."
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir(env.TF_DIR) {
+                    sh 'terraform init -backend-config=backend.hcl -input=false -no-color'
+                }
+            }
+        }
+
+        stage('Format & Validate') {
+            steps {
+                dir(env.TF_DIR) {
+                    sh 'terraform validate -no-color'
+                    // Formatting is reported, not enforced - it is Susmitha's code.
+                    sh 'terraform fmt -check -recursive -diff ../.. || echo "WARN: terraform fmt found unformatted files (not blocking)"'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir(env.TF_DIR) {
+                    script {
+                        def destroyFlag = params.ACTION == 'destroy' ? '-destroy' : ''
+                        sh "terraform plan ${destroyFlag} -input=false -no-color -out=tfplan"
+                        sh 'terraform show -no-color tfplan > tfplan.txt'
+                        def summary = sh(returnStdout: true,
+                                         script: "grep -E '^Plan:|^No changes' tfplan.txt || true").trim()
+                        echo "PLAN SUMMARY: ${summary}"
+                        currentBuild.description = "${params.ACTION}: ${summary}"
+                        env.PLAN_SUMMARY = summary
+                    }
+                }
+                archiveArtifacts artifacts: "${env.TF_DIR}/tfplan.txt", fingerprint: true
+            }
+        }
+
+        stage('Approval') {
+            when { expression { params.ACTION != 'plan' } }
+            steps {
+                script {
+                    timeout(time: 30, unit: 'MINUTES') {
+                        if (params.ACTION == 'destroy') {
+                            def answer = input(
+                                message: "DESTROY the ${env.CLUSTER_NAME} environment?\n${env.PLAN_SUMMARY}",
+                                ok: 'Destroy',
+                                parameters: [string(name: 'CONFIRM', defaultValue: '',
+                                                    description: 'Type the cluster name to confirm')])
+                            if (answer != env.CLUSTER_NAME) {
+                                error("Confirmation did not match '${env.CLUSTER_NAME}' - nothing was destroyed.")
+                            }
+                        } else {
+                            input(message: "Apply this plan?\n${env.PLAN_SUMMARY}\n(full plan: tfplan.txt in build artifacts)",
+                                  ok: 'Apply')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Pre-destroy cleanup') {
+            // Load balancers and EBS volumes created by Kubernetes are not in
+            // Terraform state. Left behind, they block the VPC delete and keep billing.
+            when { expression { params.ACTION == 'destroy' } }
+            steps {
+                sh '''
+                    set +e
+                    if aws eks describe-cluster --name "$CLUSTER_NAME" >/dev/null 2>&1; then
+                        mkdir -p "$(dirname "$KUBECONFIG")"
+                        aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
+                        echo "--- Helm releases"
+                        helm list -A
+                        helm list -A -o json | jq -r '.[] | "\\(.name) \\(.namespace)"' | while read -r name ns; do
+                            helm uninstall "$name" -n "$ns" --wait --timeout 5m
+                        done
+                        echo "--- Ingresses and LoadBalancer services"
+                        kubectl delete ingress --all --all-namespaces --wait=true --timeout=3m
+                        kubectl get svc -A -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer") | "\\(.metadata.namespace) \\(.metadata.name)"' \
+                          | while read -r ns name; do kubectl delete svc "$name" -n "$ns" --wait=true --timeout=3m; done
+                        echo "--- Persistent volume claims (EBS volumes)"
+                        kubectl delete statefulset --all --all-namespaces --wait=true --timeout=3m
+                        kubectl delete pvc --all --all-namespaces --wait=true --timeout=3m
+                        echo "Waiting 60s for AWS to release the load balancers..."
+                        sleep 60
+                    else
+                        echo "Cluster not found - nothing to clean up."
+                    fi
+                '''
+            }
+        }
+
+        stage('Terraform Apply / Destroy') {
+            when { expression { params.ACTION != 'plan' } }
+            steps {
+                dir(env.TF_DIR) {
+                    sh 'terraform apply -input=false -no-color tfplan'
+                }
+            }
+        }
+
+        stage('Connect to cluster') {
+            when { expression { params.ACTION == 'apply' } }
+            steps {
+                sh '''
+                    set -e
+                    mkdir -p "$(dirname "$KUBECONFIG")"
+                    aws eks update-kubeconfig --name "$CLUSTER_NAME" --kubeconfig "$KUBECONFIG"
+                    kubectl wait --for=condition=Ready nodes --all --timeout=10m
+                    kubectl get nodes -o wide
+                    # Default gp3 StorageClass - without it the MongoDB PVC stays Pending.
+                    kubectl apply -f terraform-Sushmita/extras/storageclass-gp3.yaml
+                    kubectl get storageclass
+                    kubectl get pods -n kube-system
+                '''
+                dir(env.TF_DIR) {
+                    sh 'terraform output -no-color'
+                }
+            }
+        }
+
+        stage('Trigger Ansible job') {
+            when { expression { params.ACTION == 'apply' && params.RUN_ANSIBLE_AFTER } }
+            steps {
+                build job: 'shopnow/2-config-ansible', wait: true, propagate: true,
+                      parameters: [booleanParam(name: 'DEPLOY_APP_AFTER', value: params.DEPLOY_APP_AFTER)]
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Terraform ${params.ACTION} finished: ${env.PLAN_SUMMARY ?: ''}"
+        }
+        failure {
+            script { notifyFailure("Terraform ${params.ACTION}") }
+        }
+        always {
+            // The binary plan can contain sensitive values - never keep it.
+            sh "rm -f ${env.TF_DIR}/tfplan"
+        }
+    }
+}
+
+// Email on failure if NOTIFY_EMAIL is set as a global env var
+// (Manage Jenkins > System > Global properties) and SMTP is configured.
+def notifyFailure(String what) {
+    def to = env.NOTIFY_EMAIL
+    if (!to) {
+        echo 'NOTIFY_EMAIL not set - skipping email notification.'
+        return
+    }
+    try {
+        mail to: to,
+             subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER} (${what})",
+             body: "${what} failed.\n\nConsole: ${env.BUILD_URL}console\n"
+    } catch (err) {
+        echo "Could not send email: ${err}"
+    }
+}
