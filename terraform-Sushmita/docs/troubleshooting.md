@@ -113,3 +113,25 @@ aws ec2 create-default-vpc --region ap-south-1
 The cluster only grants the Jenkins server access if the server existed when
 the cluster was built. Run `terraform apply` in `envs/dev` once more and it
 adds the access.
+
+## Ansible / Jenkins can't SSH to the CI agent (timeout)
+
+The agent only accepts SSH from `admin_cidrs` plus the Jenkins server's
+Elastic IP, which `envs/dev` looks up by itself. If the Jenkins stack was
+destroyed and rebuilt after the cluster, its IP changed - run `terraform
+apply` in `envs/dev` again and it picks up the new one. For a person, check
+`curl ifconfig.me` against `admin_cidrs` in `envs/dev/terraform.tfvars`.
+
+## Prometheus shows the Jenkins target as `DOWN`
+
+Prometheus reaches Jenkins through the NAT Gateway, and `envs/dev` allows
+that one IP in on port 8080. If the Jenkins stack was re-applied after the
+cluster was built, that rule was removed - run `terraform apply` in
+`envs/dev` again. Also check the Prometheus plugin is installed in Jenkins
+(`http://<jenkins>:8080/prometheus/` should return text).
+
+## A load balancer is still there after teardown
+
+ingress-nginx creates a **Classic** load balancer, which `aws elbv2` doesn't
+list. Check with `aws elb describe-load-balancers --region ap-south-1`. If
+the cluster is already gone, delete it in the console (EC2 → Load Balancers).

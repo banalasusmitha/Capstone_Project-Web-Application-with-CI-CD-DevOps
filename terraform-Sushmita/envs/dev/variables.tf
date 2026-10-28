@@ -218,3 +218,15 @@ variable "jenkins_server_role_name" {
   type        = string
   default     = "shopnow-jenkins-server-role"
 }
+
+variable "jenkins_server_eip_name" {
+  description = "Name tag of the Jenkins server's Elastic IP (../../jenkins/). Its IP is added to admin_cidrs automatically so Jenkins/Ansible can SSH to the CI agent."
+  type        = string
+  default     = "shopnow-jenkins-server-eip"
+}
+
+variable "jenkins_server_sg_name" {
+  description = "Security group name of the Jenkins server (../../jenkins/). The NAT IP is allowed in on 8080 so Prometheus in the cluster can scrape Jenkins."
+  type        = string
+  default     = "shopnow-jenkins-server-sg"
+}
