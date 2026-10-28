@@ -15,8 +15,14 @@ az_count           = 2
 enable_nat_gateway = true
 single_nat_gateway = true
 
-# Home IPs change - re-run `curl ifconfig.me` and update if SSH stops working.
-admin_cidrs = ["116.73.141.79/32"]
+# Who can SSH into the CI agent. Home IPs change - re-run `curl ifconfig.me`
+# and update if SSH stops working. The Jenkins server's IP is added
+# automatically (looked up in main.tf), so don't add it here.
+admin_cidrs = [
+  "116.73.141.79/32", # Susmitha
+  # "x.x.x.x/32",     # Kaushik  - remove the # and put his IP
+  # "x.x.x.x/32",     # Ravi
+]
 
 # --- Application identity ---------------------------------------------------
 # This one value drives three things and they must all agree:
@@ -53,6 +59,8 @@ max_size       = 4
 team_principal_arns = [
   "arn:aws:iam::095355901688:user/susmitha",
   "arn:aws:iam::095355901688:user/avinash-devops",
+  # "arn:aws:iam::095355901688:user/<ravi's-user>",    # needs kubectl/helm for monitoring
+  # "arn:aws:iam::095355901688:user/<kaushik's-user>",
 ]
 
 # --- State / Jenkins --------------------------------------------------------

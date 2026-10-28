@@ -5,24 +5,35 @@ deliberate and each one is visible in the Terraform code.
 
 ## Estimated running cost (ap-south-1)
 
+Everything that exists on demo day, on-demand prices, Mumbai region
+(checked 28 Oct 2026; the AWS bill is the final word).
+
 | Resource | Config | Approx. cost |
 |----------|--------|-------------|
-| EKS control plane | 1 cluster | ~$0.10/hour (~$73/month) |
-| Worker nodes | 2x t3.medium **Spot** | ~$0.013/hour each (~$0.026/hour) |
-| NAT Gateway | **1 shared**, not one per AZ | ~$0.045/hour + data processing |
-| EBS volumes | 2x 20 GiB gp3 | ~$1.60/month |
+| EKS control plane | 1 cluster, Kubernetes 1.36 (standard support) | $0.10/hour |
+| Worker nodes | 2x `m7i-flex.large` on-demand | ~$0.10/hour each (~$0.20/hour) |
+| CI agent | 1x `c7i-flex.large` | ~$0.085/hour |
+| Jenkins server | 1x `t3.medium` | ~$0.045/hour |
+| NAT Gateway | **1 shared**, not one per AZ | ~$0.05/hour + data processing |
+| Load balancer | 1, created by ingress-nginx | ~$0.03/hour |
+| Public IPv4 addresses | ~5 (Jenkins, NAT, CI agent, load balancer) | $0.005/hour each (~$0.025/hour) |
+| EBS volumes | ~110 GiB gp3: nodes, Jenkins, agent, MongoDB | ~$0.015/hour |
 | ECR storage | lifecycle-capped | pennies |
-| S3 state + DynamoDB | tiny, on-demand billing | pennies |
-| **Total while running** | | **~$0.30-0.35/hour** |
+| S3 state + lock | tiny, on-demand billing | pennies |
+| **Total while running** | | **~$0.55-0.60/hour** |
 
-Two hours of demo work costs less than a coffee. Leaving it running for a
-month costs well over $100 - which is why the destroy step matters.
+An 8-hour demo day costs about $5. Left running, the same setup costs about
+$14 a day, or roughly $400 a month - which is why the destroy step matters.
 
 ## Decisions made in code
 
-**1. Spot worker nodes** - `capacity_type = "SPOT"` in `envs/dev/terraform.tfvars`.
-Two instance types are listed (`t3.medium`, `t3a.medium`) so EKS can find Spot
-capacity in either pool instead of failing.
+**1. On-demand nodes now, Spot is one line away** - `capacity_type` in
+`envs/dev/terraform.tfvars`. The design started on Spot `t3.medium`, but the
+AWS Free Plan rejected it, so the nodes moved to on-demand `m7i-flex.large`.
+The account is now on the paid plan, so `capacity_type = "SPOT"` would roughly
+halve the node cost (~$0.05/hour instead of ~$0.10/hour each). It stays on
+on-demand for the demo, so a Spot interruption can't take the app down
+mid-presentation. Two instance types are listed so EKS has a fallback pool.
 
 **2. One NAT Gateway, not one per AZ** - `single_nat_gateway = true`. A NAT
 Gateway costs ~$32/month before data charges; the default in most tutorials is
@@ -31,9 +42,11 @@ Setting `enable_nat_gateway = false` moves nodes into public subnets and
 removes the NAT charge entirely - the cheapest option, at the cost of exposing
 nodes to the internet.
 
-**3. Right-sized nodes** - `t3.medium` (2 vCPU / 4 GiB) is the smallest
-instance that comfortably runs the three services plus MongoDB and the
-monitoring stack. `t3.small` runs out of pods and memory once Prometheus starts.
+**3. Right-sized nodes** - `m7i-flex.large` (2 vCPU / 8 GiB) runs the three
+services, MongoDB and the monitoring stack on two nodes. `t3.small` runs out of
+pods and memory once Prometheus starts. The flex types are cheaper than the
+matching standard `m7i`/`c7i` sizes, and were on the Free Plan's short list of
+allowed instance types.
 
 **4. Node group scales down to 2, up to 4** - `min_size = 2` keeps the cluster
 usable; the HPA and node group grow only under load.
@@ -47,7 +60,9 @@ build adds ~300 MB of layers that are never cleaned up.
 and are deliberately off. Set `enabled_cluster_log_types = []` to disable
 logging altogether.
 
-**7. Small root volumes** - 20 GiB per node instead of the 50 GiB default.
+**7. Small root volumes** - 20 GiB gp3 per node (the EKS default for Linux),
+deliberately not raised "just in case"; 30 GiB for Jenkins and the CI agent,
+which keep Docker images.
 
 **8. S3 state lifecycle** - non-current state versions expire after 30 days, so
 versioning does not grow unbounded.
@@ -64,29 +79,34 @@ cross it, which is one more reason the app images live in ECR.
 **11. Reproducible teardown** - the whole environment is one `terraform destroy`
 away, so it only runs while the team is actively working.
 
+**12. Build machines only exist on demo day** - the Jenkins server
+(`jenkins/`) and the CI agent (`create_ci_agent`) are Terraform-managed like
+everything else, with disks that are deleted with the instance. Nothing in the
+CI/CD setup is a hand-made server that can be forgotten.
+
 ## Teardown checklist
 
-```bash
-cd envs/dev
-terraform destroy
-```
+The full order is in `docs/demo-day-runbook.md` (steps 7 and 8). In short:
 
-If destroy hangs on the VPC, something outside Terraform is still attached -
-almost always a load balancer created by the NGINX ingress controller:
-
-```bash
-kubectl delete svc --all --all-namespaces   # BEFORE terraform destroy
-```
-
-Then verify nothing is left running:
+1. Delete what Kubernetes created - the app, MongoDB's disk (PVC) and the
+   ingress-nginx load balancer. Terraform doesn't know about these, and the
+   load balancer blocks the VPC from being deleted.
+2. `terraform destroy` in `envs/dev` (cluster, network, CI agent).
+3. `terraform destroy` in `jenkins/`.
+4. The zero-check:
 
 ```bash
 aws eks list-clusters --region ap-south-1
-aws ec2 describe-nat-gateways --region ap-south-1 \
-  --filter Name=state,Values=available
-aws ec2 describe-addresses --region ap-south-1     # unattached EIPs still bill
-aws elbv2 describe-load-balancers --region ap-south-1
+aws ec2 describe-nat-gateways --region ap-south-1 --filter Name=state,Values=available --query 'NatGateways[].NatGatewayId'
+aws ec2 describe-instances --region ap-south-1 --filters Name=instance-state-name,Values=running,stopped --query 'Reservations[].Instances[].InstanceId'
+aws ec2 describe-addresses --region ap-south-1 --query 'Addresses[].PublicIp'
+aws ec2 describe-volumes --region ap-south-1 --query 'Volumes[].VolumeId'
+aws elb describe-load-balancers --region ap-south-1 --query 'LoadBalancerDescriptions[].LoadBalancerName'
+aws elbv2 describe-load-balancers --region ap-south-1 --query 'LoadBalancers[].LoadBalancerName'
 ```
+
+ingress-nginx creates a **Classic** load balancer by default, which only shows
+up in `aws elb`, not `aws elbv2` - so both are checked.
 
 The state bucket and lock table are intentionally **not** destroyed.
 
