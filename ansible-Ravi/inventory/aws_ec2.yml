@@ -1,0 +1,20 @@
+---
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-south-1
+
+# Only return the Terraform-managed CI agent. Never inventory EKS worker nodes.
+filters:
+  instance-state-name: running
+  "tag:Role": ci_agent
+
+# The CI agent is created in a public subnet for SSH access from Jenkins.
+hostnames:
+  - public-ip-address
+compose:
+  ansible_host: public_ip_address
+
+groups:
+  ci_agent: "ec2_tags.Role == 'ci_agent'"
+
+cache: false
