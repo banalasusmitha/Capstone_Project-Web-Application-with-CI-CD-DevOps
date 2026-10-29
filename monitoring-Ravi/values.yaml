@@ -1,0 +1,397 @@
+# Values for the ShopNow capstone monitoring stack.
+# Install as Helm release "monitoring" in namespace "monitoring"; keep those
+# names because alert-rules.yaml uses metadata.labels.release: monitoring.
+# Chart version is pinned in README.md for reproducible demo-day installs.
+
+# Avoid public LoadBalancer services. Access Grafana and Prometheus with port-forward.
+grafana:
+  enabled: true
+  defaultDashboardsEnabled: true
+  admin:
+    # Create this Secret outside Git before installing; never commit passwords.
+    existingSecret: grafana-admin-credentials
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: false
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  dashboards:
+    default:
+      shopnow-application:
+        json: |-
+          {
+            "id": null,
+            "uid": "shopnow-app-health",
+            "title": "ShopNow Application Health",
+            "tags": [
+              "shopnow",
+              "capstone",
+              "application"
+            ],
+            "timezone": "browser",
+            "schemaVersion": 39,
+            "version": 1,
+            "refresh": "30s",
+            "time": {
+              "from": "now-1h",
+              "to": "now"
+            },
+            "templating": {
+              "list": [
+                {
+                  "name": "namespace",
+                  "label": "Namespace",
+                  "type": "query",
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                  },
+                  "query": "label_values(kube_pod_info, namespace)",
+                  "definition": "label_values(kube_pod_info, namespace)",
+                  "refresh": 1,
+                  "sort": 1,
+                  "multi": false,
+                  "includeAll": false,
+                  "current": {
+                    "selected": true,
+                    "text": "default",
+                    "value": "default"
+                  },
+                  "options": [],
+                  "hide": 0
+                }
+              ]
+            },
+            "panels": [
+              {
+                "id": 1,
+                "type": "stat",
+                "title": "Available ShopNow replicas",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "gridPos": {
+                  "h": 5,
+                  "w": 6,
+                  "x": 0,
+                  "y": 0
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "short",
+                    "color": {
+                      "mode": "thresholds"
+                    },
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "green",
+                          "value": 1
+                        }
+                      ]
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "reduceOptions": {
+                    "calcs": [
+                      "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                  },
+                  "orientation": "auto",
+                  "textMode": "auto",
+                  "colorMode": "value",
+                  "graphMode": "area",
+                  "justifyMode": "auto"
+                },
+                "targets": [
+                  {
+                    "expr": "sum(kube_deployment_status_replicas_available{namespace=\"$namespace\",deployment=~\"frontend-deployment|admin-deployment|backend-deployment\"})",
+                    "legendFormat": "Available replicas",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "type": "stat",
+                "title": "ShopNow container restarts (15m)",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "gridPos": {
+                  "h": 5,
+                  "w": 6,
+                  "x": 6,
+                  "y": 0
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "short",
+                    "color": {
+                      "mode": "thresholds"
+                    },
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "orange",
+                          "value": 1
+                        },
+                        {
+                          "color": "red",
+                          "value": 3
+                        }
+                      ]
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "reduceOptions": {
+                    "calcs": [
+                      "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                  },
+                  "orientation": "auto",
+                  "textMode": "auto",
+                  "colorMode": "value",
+                  "graphMode": "area",
+                  "justifyMode": "auto"
+                },
+                "targets": [
+                  {
+                    "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\".*(frontend|admin|backend|mongodb).*\"}[15m]))",
+                    "legendFormat": "Restarts",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "id": 3,
+                "type": "timeseries",
+                "title": "Container CPU usage by pod",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 12,
+                  "x": 12,
+                  "y": 0
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "cores",
+                    "custom": {
+                      "drawStyle": "line",
+                      "lineInterpolation": "smooth",
+                      "lineWidth": 2,
+                      "fillOpacity": 10,
+                      "showPoints": "never"
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "targets": [
+                  {
+                    "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\".*(frontend|admin|backend|mongodb).*\",container!=\"\",container!=\"POD\"}[5m]))",
+                    "legendFormat": "{{pod}}",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "id": 4,
+                "type": "timeseries",
+                "title": "Container memory working set by pod",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 12,
+                  "x": 0,
+                  "y": 8
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "bytes",
+                    "custom": {
+                      "drawStyle": "line",
+                      "lineInterpolation": "smooth",
+                      "lineWidth": 2,
+                      "fillOpacity": 10,
+                      "showPoints": "never"
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "targets": [
+                  {
+                    "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",pod=~\".*(frontend|admin|backend|mongodb).*\",container!=\"\",container!=\"POD\"})",
+                    "legendFormat": "{{pod}}",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "id": 5,
+                "type": "timeseries",
+                "title": "Available replicas by deployment",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "gridPos": {
+                  "h": 8,
+                  "w": 12,
+                  "x": 12,
+                  "y": 8
+                },
+                "fieldConfig": {
+                  "defaults": {
+                    "unit": "short",
+                    "min": 0,
+                    "custom": {
+                      "drawStyle": "line",
+                      "lineInterpolation": "stepAfter",
+                      "lineWidth": 2,
+                      "showPoints": "always"
+                    }
+                  },
+                  "overrides": []
+                },
+                "options": {
+                  "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                  },
+                  "tooltip": {
+                    "mode": "multi",
+                    "sort": "desc"
+                  }
+                },
+                "targets": [
+                  {
+                    "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\",deployment=~\"frontend-deployment|admin-deployment|backend-deployment\"}",
+                    "legendFormat": "{{deployment}}",
+                    "refId": "A"
+                  }
+                ]
+              }
+            ],
+            "annotations": {
+              "list": []
+            },
+            "links": []
+          }
+
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    replicas: 1
+    retention: 24h
+    retentionSize: 5GB
+    walCompression: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    # The project uses a short-lived demo cluster. No EBS volume is created for
+    # Prometheus; time-series history is intentionally ephemeral to control cost.
+    # Keep the rule selector aligned with the release label in alert-rules.yaml.
+    ruleSelectorNilUsesHelmValues: true
+    ruleNamespaceSelectorNilUsesHelmValues: true
+    # Replace this placeholder before installation with the actual Jenkins
+    # public DNS name or IP (without http://). Jenkins must allow Prometheus's
+    # egress/NAT source IP to reach port 8080; coordinate that security rule with
+    # Susmitha. The Jenkins Prometheus plugin must expose /prometheus.
+    additionalScrapeConfigs:
+      - job_name: jenkins
+        metrics_path: /prometheus
+        scheme: http
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        static_configs:
+          - targets:
+              - "REPLACE_WITH_JENKINS_HOST_OR_IP:8080"
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+
+# The chart already installs its node exporter and kube-state-metrics dependencies.
+# Default node and Kubernetes dashboards remain enabled through Grafana above.
