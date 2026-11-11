@@ -19,9 +19,9 @@ single_nat_gateway = true
 # and update if SSH stops working. The Jenkins server's IP is added
 # automatically (looked up in main.tf), so don't add it here.
 admin_cidrs = [
-  "116.73.141.79/32", # Susmitha
-  # "x.x.x.x/32",     # Kaushik  - remove the # and put his IP
-  # "x.x.x.x/32",     # Ravi
+  "116.73.141.79/32",   # Susmitha
+  "103.83.128.72/32",   # Kaushik
+  "205.254.168.197/32", # Ravi
 ]
 
 # --- Application identity ---------------------------------------------------

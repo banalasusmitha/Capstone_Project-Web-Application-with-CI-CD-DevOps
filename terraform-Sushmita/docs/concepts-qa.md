@@ -270,8 +270,8 @@ write `aws_eks_node_group`, and AWS launches the EC2 instances itself.
 node group means.
 
 **Memory isn't a setting at all.** It's implied by
-`instance_types = ["t3.medium"]` — 2 vCPU, 4 GB. Same as choosing t2.micro in the
-console; the instance type defines the memory.
+`instance_types = ["m7i-flex.large", ...]` — 2 vCPU, 8 GB. Same as choosing
+t2.micro in the console; the instance type defines the memory.
 
 **16 of 49 blocks are IAM**, and 10 of those are one-line policy attachments.
 

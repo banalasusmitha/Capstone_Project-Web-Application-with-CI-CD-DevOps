@@ -25,7 +25,7 @@ aws ec2 describe-availability-zones --region ap-south-1 \
 
 ## `InvalidParameterException: unsupported Kubernetes version`
 
-The default `1.33` may be outside the supported window by the time you run it.
+A pinned version eventually leaves the supported window (this project moved from 1.33 to 1.36 for exactly that reason).
 List what the region offers and update `kubernetes_version`:
 
 ```bash

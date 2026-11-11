@@ -2,10 +2,10 @@
 
 # Everyone who needs SSH or the Jenkins UI. Re-check with: curl ifconfig.me
 admin_cidrs = [
-  "116.73.141.79/32", # Susmitha
-  # "x.x.x.x/32",     # Kaushik  - remove the # and put his IP
-  # "x.x.x.x/32",     # Avinash
-  # "x.x.x.x/32",     # Ravi
+  "116.73.141.79/32",   # Susmitha
+  "103.83.128.72/32",   # Kaushik
+  "223.181.106.130/32", # Avinash
+  "205.254.168.197/32", # Ravi
 ]
 
 # GitHub's webhook senders, port 8080 only, so a push to GitHub triggers the

@@ -11,7 +11,7 @@ terraform apply
 Then copy the outputs into `../envs/dev/backend.hcl`:
 
 ```
-state_bucket_name = shopnow-tfstate-968313778667
+state_bucket_name = shopnow-tfstate-095355901688
 lock_table_name   = shopnow-tf-locks
 ```
 
