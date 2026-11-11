@@ -115,54 +115,42 @@ To ensure operational visibility, Prometheus continuously scrapes metrics from t
 This monitoring solution enables proactive issue detection and performance optimization.
 
 ## Project Structure
+The application source lives in its own repo, [banalasusmitha/shopNow](https://github.com/banalasusmitha/shopNow); Jenkins checks it out at build time.
+
 ```
 .
-├── app/                    # ShopNow source (frontend, admin, backend)
-├── terraform/              # VPC, subnets, EKS, S3 backend
-├── ansible/                # Node configuration playbooks
-├── kubernetes/
-│   ├── k8s-manifests/      # Raw Kubernetes YAML
-│   └── helm/               # Helm charts per service
-├── monitoring/             # Prometheus + Grafana setup
-├── jenkins/                # Jenkinsfile(s)
-└── README.md
+├── Jenkinsfile               # App CI/CD pipeline: test → build → push to ECR → deploy to EKS
+├── terraform-Sushmita/       # Terraform: VPC, EKS, ECR, IAM, CI agent, Jenkins server, S3 state
+├── jenkins-Kaushik/          # Jenkins server install, Configuration as Code, infra/Ansible pipelines, tests
+├── ansible-Ravi/             # Playbooks that configure the CI agent EC2
+├── kubernetes-Avinash/       # Deployments, Services, MongoDB, Ingress, HPA
+├── docker-Avinash/           # Dockerfile reference copies
+├── monitoring-Ravi/          # Prometheus + Grafana (kube-prometheus-stack)
+├── docs-Kaushik/             # Pipeline guide, setup, troubleshooting, demo checklist
+├── screenshots/              # Evidence for each sprint
+└── architecture.png
 ```
 
 ## Setup & Deployment
 
-### Prerequisites
-- AWS account with CLI configured (`aws configure`)
-- Terraform, kubectl, Helm, and Docker installed
-- A running Jenkins server on EC2 with the Docker, Kubernetes CLI, Amazon ECR, and Git plugins
+Jenkins drives everything after the Jenkins server itself exists.
 
-### 1. Provision Infrastructure
-```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
-```
+| Step | How | Docs |
+|---|---|---|
+| 1. Jenkins server | `terraform apply` in `terraform-Sushmita/jenkins/`, then `jenkins-Kaushik/server/install-jenkins.sh` | [setup-guide](docs-Kaushik/setup-guide.md) |
+| 2. Infrastructure | Jenkins job **1-infra-terraform** → `plan`, then `apply` (with approval) | [pipeline-guide](docs-Kaushik/pipeline-guide.md) |
+| 3. Configuration | Job **2-config-ansible** - started automatically after apply | [pipeline-guide](docs-Kaushik/pipeline-guide.md) |
+| 4. Application | Job **3-app-cicd** - started after configuration and on every git push | [pipeline-guide](docs-Kaushik/pipeline-guide.md) |
+| 5. Monitoring | kube-prometheus-stack, scraping the cluster and Jenkins | `monitoring-Ravi/` |
+| 6. Teardown | Job **1-infra-terraform** → `destroy`, then destroy `terraform-Sushmita/jenkins/` | [demo-checklist](docs-Kaushik/demo-checklist.md) |
 
-### 2. Configure Nodes
-```bash
-cd ansible
-ansible-playbook -i inventory playbook.yml
-```
+### Access the Application
+- Customer app → `http://<load-balancer-dns>/avinash/`
+- Admin dashboard → `http://<load-balancer-dns>/avinash-admin/`
 
-### 3. Connect to the Cluster
-```bash
-aws eks update-kubeconfig --region <region> --name <cluster-name>
-kubectl get nodes
-```
+The pipeline prints the exact URL at the end of every deployment.
 
-### 4. Run the Jenkins Pipeline
-Push a commit to the repository (or trigger the job manually). Jenkins will build, push to ECR, and deploy all three services to EKS.
-
-### 5. Access the Application
-- Customer app → `http://<load-balancer-dns>/<username>`
-- Admin dashboard → `http://<load-balancer-dns>/<username>-admin`
-
-> **Cost note:** EKS, NAT gateways, and load balancers incur ongoing AWS charges. Run `terraform destroy` after capturing your screenshots to tear everything down.
+> **Cost note:** EKS, NAT gateways, and load balancers incur ongoing AWS charges. Run the destroy job after capturing your screenshots. See `terraform-Sushmita/docs/cost-optimization.md`.
 
 ## Key Benefits
 1. Fully automated Continuous Integration and Continuous Deployment.
