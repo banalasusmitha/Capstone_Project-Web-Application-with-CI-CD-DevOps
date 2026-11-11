@@ -1,24 +1,42 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: backend-deployment
-
 spec:
-  replicas: 1
-
+  replicas: 2
   selector:
     matchLabels:
       app: backend
-
   template:
     metadata:
       labels:
         app: backend
-
     spec:
       containers:
         - name: backend
           image: 095355901688.dkr.ecr.ap-south-1.amazonaws.com/avinash-shopnow/backend:v1
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
+          env:
+            - name: MONGODB_URI
+              value: "mongodb://mongodb-0.mongodb-service:27017/shopnow"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
