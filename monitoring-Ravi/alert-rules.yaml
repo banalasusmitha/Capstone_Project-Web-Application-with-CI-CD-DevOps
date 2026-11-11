@@ -1,0 +1,54 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopnow-ravi-alerts
+  namespace: monitoring
+  labels:
+    # Matches the Helm release name and Prometheus rule selector.
+    release: monitoring
+    app.kubernetes.io/name: shopnow-ravi-alerts
+spec:
+  groups:
+    - name: shopnow.cluster.rules
+      interval: 30s
+      rules:
+        - alert: KubernetesNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: infrastructure
+          annotations:
+            summary: "A Kubernetes node is not ready"
+            description: "Node {{ $labels.node }} has not been Ready for at least 5 minutes. Check the EKS node group and kubelet status."
+
+        - alert: ShopNowPodCrashLooping
+          expr: max_over_time(kube_pod_container_status_waiting_reason{namespace="default",reason="CrashLoopBackOff"}[5m]) >= 1
+          for: 5m
+          labels:
+            severity: warning
+            component: application
+          annotations:
+            summary: "A ShopNow namespace pod is crash-looping"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} has been in CrashLoopBackOff for at least 5 minutes. Inspect pod events and logs."
+
+        - alert: ShopNowHighContainerCPU
+          expr: sum by (namespace,pod,container) (rate(container_cpu_usage_seconds_total{namespace="default",pod=~".*(frontend|admin|backend|mongodb).*",container!="",container!="POD"}[5m])) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+            component: application
+          annotations:
+            summary: "A ShopNow container is using high CPU"
+            description: "Container {{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} has averaged more than 0.8 CPU cores for 10 minutes. Check traffic, resource requests/limits and application logs."
+
+        - alert: ShopNowDeploymentReplicasUnavailable
+          expr: kube_deployment_spec_replicas{namespace="default",deployment=~"frontend-deployment|admin-deployment|backend-deployment"} > kube_deployment_status_replicas_available{namespace="default",deployment=~"frontend-deployment|admin-deployment|backend-deployment"}
+          for: 5m
+          labels:
+            severity: warning
+            component: application
+          annotations:
+            summary: "A ShopNow deployment has unavailable replicas"
+            description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has fewer available replicas than desired for 5 minutes. Check pod readiness, image pulls, scheduling and application health probes."
