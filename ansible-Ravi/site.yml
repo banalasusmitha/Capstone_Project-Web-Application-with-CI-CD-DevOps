@@ -1,0 +1,102 @@
+---
+- name: Configure the Terraform-provisioned ShopNow CI agent
+  hosts: ci_agent
+  become: true
+  gather_facts: true
+
+  vars:
+    ci_agent_user: ec2-user
+    kubectl_version: "v1.36.2"
+    kubectl_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    kubectl_checksum_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl.sha256"
+
+  pre_tasks:
+    - name: Refuse to configure hosts outside the CI-agent inventory group
+      ansible.builtin.assert:
+        that:
+          - "'ci_agent' in group_names"
+        fail_msg: >-
+          This playbook is only for the Terraform-managed CI agent tagged
+          Role=ci_agent. Check inventory/aws_ec2.yml; do not target EKS workers.
+      tags: always
+
+    - name: Verify target is Amazon Linux 2023
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Amazon"
+          - ansible_distribution_major_version == "2023"
+        fail_msg: >-
+          site.yml expects the Amazon Linux 2023 CI agent created by
+          terraform-Sushmita/modules/ci-agent.
+
+  tasks:
+    - name: Install required packages from the Amazon Linux 2023 repositories
+      ansible.builtin.dnf:
+        name:
+          - docker
+          - git
+          - java-21-amazon-corretto-headless
+          - curl
+          - tar
+          - gzip
+        state: present
+
+    - name: Ensure Docker group exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+
+    - name: Add ec2-user to the Docker group without removing other groups
+      ansible.builtin.user:
+        name: "{{ ci_agent_user }}"
+        groups:
+          - docker
+        append: true
+        state: present
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Install kubectl for Kubernetes 1.36 with SHA-256 verification
+      ansible.builtin.get_url:
+        url: "{{ kubectl_url }}"
+        dest: /usr/local/bin/kubectl
+        owner: root
+        group: root
+        mode: "0755"
+        checksum: "sha256:{{ kubectl_checksum_url }}"
+
+    - name: Verify Docker installation
+      ansible.builtin.command: docker --version
+      register: docker_version_result
+      changed_when: false
+
+    - name: Verify Git installation
+      ansible.builtin.command: git --version
+      register: git_version_result
+      changed_when: false
+
+    - name: Verify Java installation
+      ansible.builtin.command: java -version
+      register: java_version_result
+      changed_when: false
+
+    - name: Verify kubectl installation
+      ansible.builtin.command: /usr/local/bin/kubectl version --client
+      register: kubectl_version_result
+      changed_when: false
+
+    - name: Display installed tool versions
+      ansible.builtin.debug:
+        msg:
+          - "Docker: {{ docker_version_result.stdout }}"
+          - "Git: {{ git_version_result.stdout }}"
+          - "Java: {{ java_version_result.stderr | default(java_version_result.stdout) }}"
+          - "kubectl: {{ kubectl_version_result.stdout }}"
+
+  # ec2-user's new group membership applies to new login sessions. If this host
+  # is already connected as a Jenkins agent, reconnect/restart that agent after
+  # this playbook so its process inherits the docker group.
