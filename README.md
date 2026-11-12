@@ -2,6 +2,8 @@
 
 An end-to-end DevOps pipeline that builds, provisions, configures, deploys, and monitors the **ShopNow** MERN e-commerce application on Amazon EKS, orchestrated by Jenkins.
 
+> **Final delivery:** [`final-delivery/`](final-delivery/) has the full live run of 12–13 November 2026, step by step with screenshots, and the presentation.
+
 ## Problem Statement
 DevOps teams require a CI/CD pipeline to streamline the development and deployment process, ensuring that changes are consistently tested, built, and deployed across environments. Using Jenkins as the CI/CD orchestrator, this project implements an automated pipeline for the Dockerized ShopNow application that deploys to Kubernetes on AWS EKS. Jenkins also automates infrastructure provisioning (Terraform) and configuration management (Ansible), reducing manual intervention and improving efficiency.
 
@@ -94,14 +96,14 @@ The deployment includes:
 Amazon EKS manages the application containers, automatically maintaining the desired number of running pods and ensuring high availability.
 
 #### 7. Application Load Balancing & Routing
-The NGINX Ingress Controller provisions an AWS Application Load Balancer (ALB) and routes traffic by path:
+The NGINX Ingress Controller provisions an AWS load balancer (a Classic Load Balancer by default) and routes traffic by path:
 - `/<username>` → frontend (customer storefront)
 - `/<username>-admin` → admin dashboard
 
 This provides high availability, improved scalability, fault tolerance, and efficient traffic distribution across multiple application pods.
 
 #### 8. End User Access
-Users access the application through the AWS Application Load Balancer. Requests are securely routed by the ingress controller to the appropriate Kubernetes Service, which forwards them to a healthy application pod running within the EKS cluster.
+Users access the application through the AWS load balancer. Requests are securely routed by the ingress controller to the appropriate Kubernetes Service, which forwards them to a healthy application pod running within the EKS cluster.
 
 #### 9. Monitoring and Visualization
 To ensure operational visibility, Prometheus continuously scrapes metrics from the Kubernetes cluster, application pods, and services. Grafana connects to Prometheus and presents these metrics through interactive dashboards, allowing administrators to monitor:
@@ -128,6 +130,7 @@ The application source lives in its own repo, [banalasusmitha/shopNow](https://g
 ├── monitoring-Ravi/          # Prometheus + Grafana (kube-prometheus-stack)
 ├── docs-Kaushik/             # Pipeline guide, setup, troubleshooting, demo checklist
 ├── screenshots/              # Evidence for each sprint
+├── final-delivery/           # Live run step by step, screenshots, presentation
 └── architecture.png
 ```
 
@@ -158,7 +161,7 @@ The pipeline prints the exact URL at the end of every deployment.
 3. Configuration is consistent and automated through Ansible.
 4. Containerized applications ensure consistency across environments.
 5. Kubernetes provides automatic scaling, self-healing, and high availability.
-6. AWS Application Load Balancer with path-based ingress routes traffic to the right service.
+6. An AWS load balancer with path-based NGINX ingress routes traffic to the right service.
 7. Amazon ECR provides secure storage for Docker images.
 8. Prometheus and Grafana provide real-time monitoring and performance insights.
 9. Reduced manual intervention, resulting in improved deployment efficiency and operational reliability.
