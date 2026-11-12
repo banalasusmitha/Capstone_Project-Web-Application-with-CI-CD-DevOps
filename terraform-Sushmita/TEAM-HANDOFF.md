@@ -107,16 +107,13 @@ Without it the PVC stays `Pending` forever.
 **Skip the ECR `imagePullSecret`** the app README mentions. The token expires
 in 12 hours; the node role already has pull permission.
 
-**Still missing from `kubernetes-Avinash/` on `main`:**
+**Done in `kubernetes-Avinash/` (PR #8, merged 12 Nov) and run live on 12 Nov:**
 
-- MongoDB StatefulSet, headless Service and PVC (`gp3`) - the backend can't
-  connect without it
+- MongoDB StatefulSet, headless Service and a 5 GiB `gp3` volume
 - `MONGODB_URI` on the backend: `mongodb://mongodb-0.mongodb-service:27017/shopnow`
-- An Ingress (nginx) for `/avinash` and `/avinash-admin` - all three Services
-  are ClusterIP, so nothing is reachable from outside
-- Probes - the backend uses `/api/health`, **not** `/health` (that route
-  doesn't exist)
-- CPU/memory requests + HPA - the HPA can't scale without requests
+- 3 nginx Ingresses with path rewrite: `/avinash`, `/avinash-admin`, `/avinash/api`
+- Probes on `/api/health` (not `/health`, which doesn't exist)
+- CPU/memory requests + backend HPA (2-4 pods at 70% CPU)
 
 Keep the Deployment/container names and the image paths
 (`.../avinash-shopnow/<service>`) as they are - Kaushik's pipeline swaps the
