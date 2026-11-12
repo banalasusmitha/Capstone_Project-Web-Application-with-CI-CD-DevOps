@@ -26,10 +26,6 @@ jenkins:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
 
-  crumbIssuer:
-    standard:
-      excludeClientIPFromCrumb: true
-
   # Build scripts run on this server, so remote agents are not needed.
   slaveAgentPort: -1
 

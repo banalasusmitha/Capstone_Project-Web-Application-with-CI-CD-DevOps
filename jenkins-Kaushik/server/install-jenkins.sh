@@ -34,7 +34,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JENKINS_HOME="/var/lib/jenkins"
 CASC_DIR="${JENKINS_HOME}/casc"
 ENV_FILE="/etc/sysconfig/jenkins-casc"
-CLI_JAR="/opt/jenkins-cli.jar"
+PLUGIN_MANAGER_VERSION="2.13.2"
+PLUGIN_MANAGER_JAR="/opt/jenkins-plugin-manager-${PLUGIN_MANAGER_VERSION}.jar"
 
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*"; }
@@ -140,7 +141,25 @@ EOF
 systemctl daemon-reload
 
 ###############################################################################
-log "8/9 Start Jenkins and install plugins"
+log "8/9 Install Jenkins plugins"
+plugin_staging="$(mktemp -d)"
+trap 'rm -rf -- "${plugin_staging}"' EXIT
+jenkins_war="$(rpm -ql jenkins | awk '/\/jenkins\.war$/ { print }')"
+test -f "${jenkins_war}"
+grep -Ev '^[[:space:]]*(#|$)' "${SCRIPT_DIR}/plugins.txt" > "${plugin_staging}/plugins.txt"
+curl -fsSL --retry 2 -o "${plugin_staging}/plugin-manager.jar" \
+  "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${PLUGIN_MANAGER_VERSION}/jenkins-plugin-manager-${PLUGIN_MANAGER_VERSION}.jar"
+install -m 0644 "${plugin_staging}/plugin-manager.jar" "${PLUGIN_MANAGER_JAR}"
+java -jar "${PLUGIN_MANAGER_JAR}" --war "${jenkins_war}" \
+  --plugin-file "${plugin_staging}/plugins.txt" \
+  --plugin-download-directory "${plugin_staging}/plugins"
+
+systemctl stop jenkins
+install -d -o jenkins -g jenkins "${JENKINS_HOME}/plugins"
+install -o jenkins -g jenkins -m 0644 "${plugin_staging}"/plugins/*.jpi "${JENKINS_HOME}/plugins/"
+
+###############################################################################
+log "9/9 Start Jenkins and apply Configuration as Code"
 wait_for_jenkins() {
   local i
   for i in $(seq 1 60); do
@@ -152,37 +171,7 @@ wait_for_jenkins() {
 }
 
 systemctl enable jenkins
-systemctl restart jenkins
-wait_for_jenkins
-
-curl -fsSL -o "${CLI_JAR}" http://localhost:8080/jnlpJars/jenkins-cli.jar
-
-# First run: no security realm yet (JCasC plugin not installed) so the CLI needs
-# no login. Later runs: JCasC has created the admin user.
-cli() {
-  if java -jar "${CLI_JAR}" -s http://localhost:8080/ -auth "admin:${ADMIN_PW}" who-am-i >/dev/null 2>&1; then
-    java -jar "${CLI_JAR}" -s http://localhost:8080/ -auth "admin:${ADMIN_PW}" "$@"
-  else
-    java -jar "${CLI_JAR}" -s http://localhost:8080/ "$@"
-  fi
-}
-
-# Make sure update-center data is downloaded before installing.
-echo 'jenkins.model.Jenkins.instance.updateCenter.updateAllSites()' | cli groovy = >/dev/null
-
-failed=()
-while read -r plugin; do
-  [[ -z "$plugin" || "$plugin" == \#* ]] && continue
-  if cli install-plugin "$plugin" >/dev/null 2>&1; then
-    echo "  installed: $plugin"
-  else
-    failed+=("$plugin"); warn "could not install: $plugin"
-  fi
-done < "${SCRIPT_DIR}/plugins.txt"
-
-###############################################################################
-log "9/9 Restart so Configuration as Code applies (admin user + jobs)"
-systemctl restart jenkins
+systemctl start jenkins
 wait_for_jenkins
 
 if curl -fsS -u "admin:${ADMIN_PW}" http://localhost:8080/whoAmI/api/json | grep -q '"authenticated":true'; then
@@ -212,4 +201,3 @@ cat <<EOF
        (docs-Kaushik/setup-guide.md, step 4)
 =====================================================================
 EOF
-[[ ${#failed[@]} -eq 0 ]] || warn "Plugins that failed (install from Manage Jenkins > Plugins): ${failed[*]}"

@@ -36,7 +36,7 @@
           - docker
           - git
           - java-21-amazon-corretto-headless
-          - curl
+          - curl-minimal
           - tar
           - gzip
         state: present
