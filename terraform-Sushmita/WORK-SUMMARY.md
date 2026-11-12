@@ -83,11 +83,12 @@ nothing left running.
   `terraform destroy`. I brought it into Terraform.
 - **A half-built cluster and Elastic IPs** were created outside the normal flow.
   I traced them with CloudTrail and removed them with a targeted destroy.
-- **Blank page in the trial run.** The images in ECR were built for the app's
-  default path `/aryan`, not `/avinash` (the path is baked in at build time).
-  For my trial I added a temporary route, which is why screenshots 08 and 09
-  show `/aryan`. Kaushik's pipeline run rebuilt the images with
-  `USER_NAME=avinash`, and `/avinash` returned HTTP 200.
+- **The app's URL path is baked in when the images are built.** Without
+  `--build-arg USER_NAME=avinash` the app serves at the default `/aryan` and
+  every asset 404s behind our ingress. I wrote this up in
+  [`docs/app-integration.md`](docs/app-integration.md) and exposed the right
+  value as the Terraform output `docker_build_args`; the Jenkins pipeline builds
+  with it, and `/avinash` and `/avinash-admin` both returned HTTP 200.
 
 ---
 

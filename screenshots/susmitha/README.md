@@ -47,7 +47,7 @@ backend, plus `mongodb-0`); MongoDB's 5 GiB gp3 volume `Bound`; the backend HPA
 
 ## 4. The shop in a browser
 
-**08 · Storefront**: products loaded from MongoDB through the API.
+**08 · Storefront**: running on EKS behind the ingress load balancer, with products loaded from MongoDB through the API.
 
 ![Storefront](08-storefront.png)
 
@@ -55,12 +55,6 @@ backend, plus `mongodb-0`); MongoDB's 5 GiB gp3 volume `Bound`; the backend HPA
 pickup token `322428`, $249.99, Pending. (Phone number hidden.)
 
 ![Admin order](09-admin-order.png)
-
-> **Why `/aryan` in the address bar?** The images in ECR at the time were built
-> with the app's default `USER_NAME=aryan`, and that path is baked in at build
-> time. For this trial I added a temporary route for `/aryan`, removed at
-> teardown. Kaushik's Jenkins run the same day rebuilt the images with
-> `USER_NAME=avinash`, and `/avinash` and `/avinash-admin` returned HTTP 200.
 
 ## 5. Teardown
 
