@@ -6,6 +6,10 @@ and the CI agent - with Terraform state stored remotely in S3.
 
 Everything the other three workstreams need is exposed as a Terraform output.
 
+> **Short version:** [`WORK-SUMMARY.md`](WORK-SUMMARY.md) - what I built, sprint
+> by sprint, and the results of our live run on 12 November 2026, with
+> screenshots in [`screenshots/susmitha/`](../screenshots/susmitha/).
+
 The application is [banalasusmitha/shopNow](https://github.com/banalasusmitha/shopNow):
 three containers (React frontend on :80, React admin on :80, Express API on
 :5000) plus MongoDB on :27017 with a persistent volume. See
