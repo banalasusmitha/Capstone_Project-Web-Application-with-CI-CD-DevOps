@@ -14,6 +14,12 @@ mock_provider "aws" {
   mock_data "aws_iam_roles" {
     defaults = { arns = [] }
   }
+  mock_data "aws_eips" {
+    defaults = { public_ips = [], allocation_ids = [] }
+  }
+  mock_data "aws_security_groups" {
+    defaults = { ids = [], arns = [], vpc_ids = [] }
+  }
   mock_data "aws_iam_policy_document" {
     defaults = { json = "{\"Version\":\"2012-10-17\",\"Statement\":[]}" }
   }
@@ -36,6 +42,9 @@ mock_provider "aws" {
   }
   mock_resource "aws_iam_policy" {
     defaults = { arn = "arn:aws:iam::095355901688:policy/mock" }
+  }
+  mock_resource "aws_eip" {
+    defaults = { public_ip = "13.235.1.1" }
   }
   mock_resource "aws_instance" {
     defaults = { public_ip = "13.200.10.20", private_ip = "10.0.1.20" }
@@ -120,3 +129,51 @@ run "jenkins_server_role_is_picked_up_when_it_exists" {
     error_message = "The Jenkins server role should be found and granted access"
   }
 }
+
+run "without_jenkins_server_nothing_extra_is_opened" {
+  command = plan
+
+  assert {
+    condition     = toset(local.admin_cidrs) == toset(var.admin_cidrs)
+    error_message = "With no Jenkins server, admin_cidrs should be exactly the tfvars list"
+  }
+  assert {
+    condition     = length(aws_security_group_rule.prometheus_to_jenkins) == 0
+    error_message = "No Jenkins server -> no Prometheus rule"
+  }
+}
+
+run "jenkins_server_ip_and_sg_are_wired_in_when_it_exists" {
+  command = plan
+
+  override_data {
+    target = data.aws_eips.jenkins_server
+    values = { public_ips = ["3.110.50.60"], allocation_ids = ["eipalloc-0mock"] }
+  }
+  override_data {
+    target = data.aws_security_groups.jenkins_server
+    values = { ids = ["sg-0jenkinsmock"], arns = [], vpc_ids = [] }
+  }
+
+  assert {
+    condition     = contains(local.admin_cidrs, "3.110.50.60/32")
+    error_message = "Jenkins server IP should be allowed to SSH to the CI agent"
+  }
+  assert {
+    condition     = alltrue([for c in var.admin_cidrs : contains(local.admin_cidrs, c)])
+    error_message = "People's IPs from tfvars must still be there"
+  }
+  assert {
+    condition     = length(aws_security_group_rule.prometheus_to_jenkins) == 1
+    error_message = "Prometheus -> Jenkins rule should exist when NAT and Jenkins both exist"
+  }
+  assert {
+    condition     = aws_security_group_rule.prometheus_to_jenkins[0].security_group_id == "sg-0jenkinsmock" && aws_security_group_rule.prometheus_to_jenkins[0].from_port == 8080 && aws_security_group_rule.prometheus_to_jenkins[0].to_port == 8080
+    error_message = "Rule must be on the Jenkins server SG, port 8080 only"
+  }
+  assert {
+    condition     = tolist(aws_security_group_rule.prometheus_to_jenkins[0].cidr_blocks) == tolist(["13.235.1.1/32"])
+    error_message = "Rule must allow only the NAT Gateway's IP"
+  }
+}
+

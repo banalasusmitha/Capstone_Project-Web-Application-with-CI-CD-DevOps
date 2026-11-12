@@ -305,9 +305,10 @@ often one of them missing.
 
 **Step 6 - `aws_eks_node_group`.** The actual EC2 instances.
 
-- `capacity_type = "SPOT"` - spare AWS capacity at 60-70% off, reclaimable with
-  a 2-minute warning. Fine here because the app is replicated and stateless.
-  Two instance types are listed so EKS can find capacity in either Spot pool.
+- `capacity_type` - `"SPOT"` is spare AWS capacity at a big discount,
+  reclaimable with a 2-minute warning. The Free Plan rejected Spot, so this
+  project runs `"ON_DEMAND"` `m7i-flex.large`; switching back is one line in
+  tfvars. Two instance types are listed so EKS always has a fallback pool.
 - `ignore_changes = [scaling_config[0].desired_size]` - once the HPA or the
   autoscaler scales the group to 3 nodes, the real count no longer matches your
   `desired_size = 2`. Without this line, the next `terraform apply` would helpfully

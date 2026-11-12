@@ -37,3 +37,8 @@ output "nat_gateway_ids" {
   description = "NAT Gateway IDs (empty when NAT is disabled)."
   value       = aws_nat_gateway.this[*].id
 }
+
+output "nat_public_ips" {
+  description = "Public IPs of the NAT Gateways - what the outside world sees when anything in the private subnets (pods, nodes) calls out."
+  value       = aws_eip.nat[*].public_ip
+}

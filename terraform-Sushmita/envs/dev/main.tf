@@ -20,6 +20,12 @@ locals {
   # With no NAT Gateway, private subnets have no route to the internet, so
   # nodes must live in public subnets or they can never join the cluster.
   node_subnet_ids = var.enable_nat_gateway ? module.vpc.private_subnet_ids : module.vpc.public_subnet_ids
+
+  # People from terraform.tfvars + the Jenkins server's Elastic IP (if it exists).
+  admin_cidrs = distinct(concat(
+    var.admin_cidrs,
+    [for ip in data.aws_eips.jenkins_server.public_ips : "${ip}/32"]
+  ))
 }
 
 # The Jenkins server lives in its own stack (../../jenkins/) so that
@@ -28,6 +34,22 @@ locals {
 # returns nothing, instead of failing.
 data "aws_iam_roles" "jenkins_server" {
   name_regex = "^${var.jenkins_server_role_name}$"
+}
+
+# Same idea for its public IP: Jenkins (and Ravi's Ansible job running on it)
+# must be able to SSH into the CI agent, so its Elastic IP joins admin_cidrs
+# automatically. The IP changes every time the Jenkins stack is rebuilt, so
+# looking it up beats hard-coding it in terraform.tfvars.
+data "aws_eips" "jenkins_server" {
+  tags = { Name = var.jenkins_server_eip_name }
+}
+
+# The Jenkins server's security group, for the Prometheus rule further down.
+data "aws_security_groups" "jenkins_server" {
+  filter {
+    name   = "group-name"
+    values = [var.jenkins_server_sg_name]
+  }
 }
 
 ###############################################################################
@@ -44,7 +66,7 @@ module "vpc" {
 
   enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = var.single_nat_gateway
-  admin_cidrs        = var.admin_cidrs
+  admin_cidrs        = local.admin_cidrs
 
   tags = local.tags
 }
@@ -149,4 +171,28 @@ module "ci_agent" {
   # An EC2 in a public subnet is only reachable once the internet gateway and
   # public route exist. Waiting on the whole VPC module guarantees that.
   depends_on = [module.vpc]
+}
+
+###############################################################################
+# MONITORING -> JENKINS
+###############################################################################
+
+# Prometheus runs inside the cluster and scrapes Jenkins at
+# http://<jenkins>:8080/prometheus. Pods reach the internet through the NAT
+# Gateway, so Jenkins sees the NAT's public IP - allow exactly that IP, on
+# 8080 only. Created only when both the NAT and the Jenkins server exist.
+#
+# This rule lives on the Jenkins stack's security group but belongs to this
+# stack, so it is removed when the cluster is destroyed. If the Jenkins stack
+# is re-applied while the cluster is up, re-run apply here to put it back.
+resource "aws_security_group_rule" "prometheus_to_jenkins" {
+  count = var.enable_nat_gateway && length(data.aws_security_groups.jenkins_server.ids) > 0 ? 1 : 0
+
+  type              = "ingress"
+  description       = "Prometheus in EKS (via NAT) scrapes Jenkins /prometheus"
+  from_port         = 8080
+  to_port           = 8080
+  protocol          = "tcp"
+  cidr_blocks       = [for ip in module.vpc.nat_public_ips : "${ip}/32"]
+  security_group_id = data.aws_security_groups.jenkins_server.ids[0]
 }

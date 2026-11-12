@@ -242,7 +242,7 @@ says *what it actually is for this environment*:
 ```hcl
 aws_region   = "ap-south-1"
 cluster_name = "shopnow-eks-dev"
-capacity_type = "SPOT"
+capacity_type = "ON_DEMAND"
 desired_size  = 2
 ```
 
@@ -288,7 +288,7 @@ separate file passed at init time.
 ### `backend.hcl` - the actual bucket
 
 ```hcl
-bucket = "shopnow-tfstate-968313778667"
+bucket = "shopnow-tfstate-095355901688"
 key    = "dev/terraform.tfstate"
 region = "ap-south-1"
 ```

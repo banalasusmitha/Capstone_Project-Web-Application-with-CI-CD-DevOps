@@ -237,10 +237,10 @@ Read the last line before going further:
 terraform apply tfplan
 ```
 
-About 30–40 minutes for a full rebuild. If nobody has run `apply` since
-August, this also applies `allow_jenkins_to_run_terraform = true` — committed
-then, but only a file change until someone applies it. Kaushik has been
-waiting on that.
+About 30–40 minutes for a full rebuild. Jenkins runs Terraform from its own
+server (the `jenkins/` stack, with its own admin IAM role), so
+`allow_jenkins_to_run_terraform` stays `false` - that flag is only for the CI
+agent's role.
 
 ---
 

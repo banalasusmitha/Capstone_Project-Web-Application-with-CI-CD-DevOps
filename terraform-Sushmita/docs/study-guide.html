@@ -331,8 +331,8 @@
     <span class="num">04</span>
     <div class="step-body">
       <h3>Worker nodes</h3>
-      <p class="muted">Two EC2 instances that join the cluster. Spot capacity,
-      so roughly 60–70% cheaper than on-demand.</p>
+      <p class="muted">Two EC2 instances (<code>m7i-flex.large</code>, 2 vCPU / 8 GB) that join
+      the cluster. On-demand for the demo; switching to Spot is one line in tfvars.</p>
       <div class="plan"><span>+</span> aws_iam_role.node<br><span>+</span> aws_eks_node_group.this</div>
     </div>
   </div>
@@ -421,8 +421,14 @@
     <details><summary>Why ignore_changes on desired_size?</summary>
     <div class="answer">Once the autoscaler or HPA scales the group to three nodes, reality no longer matches <code>desired_size = 2</code> in the code. Without that lifecycle rule, the next apply would scale it back down. It means "I set the initial value, something else owns it after that."</div></details>
 
-    <details><summary>Why Spot instances, and what is the risk?</summary>
-    <div class="answer">Spare AWS capacity at roughly 60–70% off. The risk is reclamation with a two-minute warning, which is fine here because the app is replicated and stateless and EKS drains the node gracefully. MongoDB is the one stateful piece — in production it would sit on on-demand nodes or move to a managed database.</div></details>
+    <details><summary>Why on-demand nodes and not Spot?</summary>
+    <div class="answer">The design started on Spot <code>t3.medium</code> — spare AWS capacity at a big discount, reclaimable with a two-minute warning. The AWS Free Plan rejected Spot, so the nodes moved to on-demand <code>m7i-flex.large</code>, one of the Free Plan's allowed types. The account is now on the paid plan, so <code>capacity_type = "SPOT"</code> would roughly halve node cost, but it stays on-demand for the demo so a reclamation can't take the app down mid-presentation. MongoDB is the one stateful piece, which is another reason to avoid Spot for it.</div></details>
+
+    <details><summary>Why is the Jenkins server a separate Terraform stack?</summary>
+    <div class="answer">Jenkins runs <code>terraform destroy</code> on the cluster. If Jenkins lived in the same stack, that destroy would delete the machine running it, halfway through. In its own stack (<code>jenkins/</code>, own state key), it's built first and destroyed last. It is still Terraform-managed, so it can't be forgotten and left billing the way a hand-made server was.</div></details>
+
+    <details><summary>Why Kubernetes 1.36?</summary>
+    <div class="answer">The cluster was first built on 1.33, which later moved into EKS extended support: $0.60 per cluster-hour instead of $0.10, six times as much. A forgotten 1.33 cluster used up the account's credits. 1.36 is in standard support, checked with <code>aws eks describe-cluster-versions</code>.</div></details>
 
     <details><summary>How does Jenkins get kubectl access without editing aws-auth?</summary>
     <div class="answer">EKS Access Entries. Historically you hand-edited a ConfigMap called <code>aws-auth</code> inside the cluster, where a typo could lock everyone out permanently. Access Entries are a proper AWS API, so Terraform creates one for the Jenkins role and associates the cluster-admin policy with it.</div></details>
@@ -435,7 +441,7 @@
     <h3>Cost and security</h3>
 
     <details><summary>What does this cost, and what did you do about it?</summary>
-    <div class="answer">Roughly $0.30–0.35/hour running: the control plane is $0.10, two Spot nodes about $0.026, one NAT gateway $0.045, the rest pennies. Decisions in the code: Spot rather than on-demand, one shared NAT rather than one per AZ, ECR lifecycle policies so image storage stays flat, seven-day log retention, 20 GiB root volumes instead of 50, and non-current state versions expiring after 30 days.</div></details>
+    <div class="answer">Roughly $0.55–0.60/hour with everything up: control plane $0.10, two m7i-flex.large nodes about $0.20, the CI agent about $0.085, the Jenkins t3.medium about $0.045, one NAT gateway about $0.05, the load balancer and public IPs about $0.05, the rest pennies. About $5 for a demo day. Decisions: everything is built and destroyed the same day, Kubernetes 1.36 in standard support ($0.10/hour, not $0.60 extended), one shared NAT rather than one per AZ, ECR lifecycle policies, seven-day log retention, 20 GiB node disks, state versions expiring after 30 days, and a $50 budget alert. Spot is a one-line switch for a further saving.</div></details>
 
     <details><summary>Why does Jenkins use an instance profile instead of access keys?</summary>
     <div class="answer">An access key is a long-lived secret that would sit on the Jenkins server indefinitely, and anyone who reads it has the AWS account. An instance profile makes AWS hand the machine temporary credentials that rotate automatically and cannot be copied off. The AWS CLI, Docker and kubectl all pick them up with no configuration.</div></details>
@@ -451,13 +457,13 @@
     <h3>Your work and the team</h3>
 
     <details><summary>What exactly was your contribution?</summary>
-    <div class="answer">The whole infrastructure layer: VPC with public and private subnets across two AZs, internet and NAT gateways, route tables, security groups, three ECR repositories with lifecycle policies, IAM roles for the cluster, the nodes and Jenkins, the EKS cluster with a Spot node group and five add-ons, and remote state in S3 with locking. Everything the other three workstreams run on top of.</div></details>
+    <div class="answer">The whole infrastructure layer: VPC with public and private subnets across two AZs, internet and NAT gateways, route tables, security groups, three ECR repositories with lifecycle policies, IAM roles for the cluster, the nodes and Jenkins, the EKS cluster (Kubernetes 1.36) with a managed node group and five add-ons, a separate Jenkins server stack, the CI agent EC2 for Ansible, and remote state in S3 with locking. Everything the other three workstreams run on top of.</div></details>
 
     <details><summary>How do your teammates get what they need from you?</summary>
-    <div class="answer">Terraform outputs. Kaushik takes the Jenkins instance profile, security group and a public subnet ID; Avinash takes the ECR URLs, cluster name and the Docker build argument; Ravi takes the private subnet IDs and node group name. Nobody has to look anything up in the AWS console.</div></details>
+    <div class="answer">Terraform outputs. Kaushik takes the Jenkins server's URL, SSH command and IAM role from the <code>jenkins/</code> stack; Avinash takes the ECR URLs, cluster name and the Docker build argument; Ravi takes the CI agent's public IP and a ready-made Ansible inventory line. Nobody has to look anything up in the AWS console.</div></details>
 
     <details><summary>What would you do differently with more time?</summary>
-    <div class="answer">Add VPC endpoints so ECR traffic avoids the NAT gateway's data charges, install Cluster Autoscaler or Karpenter so nodes scale automatically rather than sitting at a fixed range, narrow the Jenkins Terraform permissions from PowerUserAccess to a hand-written least-privilege policy, and add a <code>prod</code> environment — the module structure already supports it.</div></details>
+    <div class="answer">Add VPC endpoints so ECR traffic avoids the NAT gateway's data charges, install Cluster Autoscaler or Karpenter so nodes scale automatically rather than sitting at a fixed range, narrow the Jenkins server's AdministratorAccess to a hand-written least-privilege policy, and add a <code>prod</code> environment — the module structure already supports it.</div></details>
 
     <details><summary>What was the hardest problem you hit?</summary>
     <div class="answer">Pick a real one and be specific. Good candidates: discovering the team was split across two AWS accounts, which meant the cluster could not pull images from a teammate's private ECR; or the ordering problem where add-ons must wait for nodes to exist, since their own pods need somewhere to be scheduled.</div></details>
