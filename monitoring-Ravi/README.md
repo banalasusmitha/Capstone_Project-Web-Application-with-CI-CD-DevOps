@@ -170,20 +170,6 @@ check the Prometheus Alerts page or Alertmanager. Clean up immediately:
 kubectl delete pod shopnow-alert-test -n default
 ```
 
-## Screenshot checklist
-
-Save genuine evidence in the shared repository `screenshots/` folder. Never
-capture Grafana passwords, AWS credentials, cookies or access tokens.
-
-1. `ravi-monitoring-01-helm-release.png` - `helm status monitoring -n monitoring`.
-2. `ravi-monitoring-02-pods-ready.png` - monitoring pods running/Ready.
-3. `ravi-monitoring-03-prometheus-targets.png` - targets page, including Jenkins `UP` once enabled.
-4. `ravi-monitoring-04-node-dashboard.png` - node dashboard with live data.
-5. `ravi-monitoring-05-pod-dashboard.png` - pod dashboard with live data.
-6. `ravi-monitoring-06-shopnow-dashboard.png` - ShopNow Application Health dashboard.
-7. `ravi-monitoring-07-alert-rules.png` - Prometheus rules/alerts page.
-8. `ravi-monitoring-08-alert-fired-and-resolved.png` - alert firing and recovery, if you perform the controlled test.
-
 ## Cleanup
 
 Coordinate with the team and clean up application resources first. Remove the
