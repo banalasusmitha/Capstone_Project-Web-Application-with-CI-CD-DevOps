@@ -104,16 +104,6 @@ The playbook intentionally does not install Jenkins, configure EKS worker
 nodes, or write AWS access keys. Terraform creates the machine and IAM
 association; Ansible configures packages on that machine.
 
-## Screenshot checklist
-
-Save genuine command output in the repository's shared `screenshots/` directory.
-Do not include private-key contents, access tokens, or secrets.
-
-1. `ravi-ansible-01-inventory.png` - `ansible-inventory --graph` showing only `ci_agent`.
-2. `ravi-ansible-02-syntax-check.png` - successful syntax check.
-3. `ravi-ansible-03-first-run.png` - first real playbook run recap.
-4. `ravi-ansible-04-idempotency.png` - second run recap showing no repeated changes.
-5. `ravi-ansible-05-tools-verified.png` - Docker, Git, Java, kubectl and `id ec2-user` checks.
 
 ## Troubleshooting
 
